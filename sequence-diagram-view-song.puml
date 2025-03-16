@@ -82,7 +82,6 @@ else Error: Listener not found
 
     View1 <- ViewModel: display error message
     deactivate ViewModel
-    newpage
 
 else Error: Song not found
     Interactor -> SongRepository: get Song\n(song_id)

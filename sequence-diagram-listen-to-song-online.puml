@@ -74,7 +74,6 @@ else Error: Listener not found
     deactivate ViewModel
     
     View -> View: change icon to cancelled
-    newpage
 
 else Error: Song not found
     Interactor -> SongRepository: get Song\n(song_id)
