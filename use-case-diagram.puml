@@ -2,8 +2,9 @@
 
 left to right direction
 skinparam linetype polyline
+skinparam ArrowStraight true
 
-actor "Listener" as L
+actor "Basic Listener" as a
 actor "Premium Listener" as b
 actor "Guest" as c
 
@@ -18,28 +19,30 @@ usecase "Listen Online to Song/Playlist" as u5
 usecase "Add/Remove Songs/Playlist from Favorites" as u6
 usecase "Share Song/Playlist/Artists" as u7
 usecase "Follow Playlist/Artists" as u8
-usecase "Sign up for Subscription" as u9
 
+usecase "Sign up for Subscription" as u9
+usecase "Renew/Cancel Subscription" as u20
+rectangle "Authentication" {
 usecase "Sign in" as u13
 usecase "Sign up" as u14
 usecase "Recover Account" as u15
+}
 
 usecase "Listen Premium to Song/Playlist" as u16
 usecase "Listen Offline to Song/Playlist" as u17
 usecase "Download Song/Playlist" as u18
 usecase "Create/Update/Delete Playlist" as u19
-usecase "Renew/Cancel Subscription" as u20
 usecase "Modify Playlist Access Level" as u21
 }
-L--u1
-L--u2
-L--u3
-L--u4
-L--u5
-L--u6
-L--u7
-L--u8
-L--u9
+a-u1
+a-u2
+a--u3
+a--u4
+a--u5
+a--u6
+a--u7
+a--u8
+a--u9
 
 c-up-u13
 c-up-u14
@@ -58,10 +61,10 @@ u15-[hidden]up-u3
 
 u16-[hidden]up-u4
 u17-[hidden]up-u8
-u18-[hidden]up-u9
+u18-[hidden]up-u6
 u19-[hidden]up-u5
-u20-[hidden]up-u6
+u20-[hidden]up-u9
 u21-[hidden]up-u7
 
-L---->b
+a <|-- b: extends
 @enduml

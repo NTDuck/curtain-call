@@ -1,6 +1,7 @@
 @startuml
 
 hide footbox
+skinparam BackgroundColor transparent
 
 actor Listener as User
 boundary ":SongPreview\nView" as View0

@@ -1,0 +1,95 @@
+@startuml
+
+left to right direction
+hide empty members
+skinparam BackgroundColor transparent
+
+class User {
+    + id: Uuid
+    + credentials: UserCredentials
+}
+
+class UserCredentials {
+    + username: String
+    + password: String
+}
+
+class Listener {
+    + favourites: Vec<Song>
+}
+
+class PremiumListener {
+    + playlists: Vec<Playlist>
+    + subscription: Subscription
+}
+
+class Artist {
+    + metadata: ArtistMetadata
+    + albums: Vec<Playlist>
+    + singles: Vec<Song>
+}
+
+class ArtistMetadata {
+    + name: String
+    + monthly_listeners: u64
+    + is_verified: bool
+}
+
+class Subscription {
+    + id: Uuid
+    + start_date: SystemTime
+    + end_date: SystemTime
+
+    + is_active(): bool
+}
+
+class Song {
+    + id: Uuid
+    + metadata: SongMetadata
+    + audio: SongAudio
+}
+
+class SongMetadata {
+    + title: String
+    + artists: Vec<Artist>
+    + duration: Duration
+}
+
+class SongAudio {
+    + normal_url: String
+    + premium_url: String
+}
+
+class Playlist {
+    + id: Uuid
+    + metadata: PlaylistMetadata
+    + tracks: Vec<Song>
+}
+
+class PlaylistMetadata {
+    + title: String
+    + owner: User
+    + is_public: bool
+}
+
+' Inheritance
+Listener <|-- PremiumListener
+User <|-- Listener
+User <|-- Artist
+
+' Compositions
+User "1" *-- "1" UserCredentials: "has"
+PremiumListener "1" *-- "1" Subscription: "has"
+Artist "1" *-- "1" ArtistMetadata: "has"
+Song "1" *-- "1" SongMetadata: "has"
+Song "1" *-- "1" SongAudio: "has"
+Playlist "1" *-- "1" PlaylistMetadata: "has"
+
+' Aggregations
+Playlist "1" o-- "*" Song: "contains"
+PremiumListener "1" o-- "*" Playlist: "owns"
+Listener "1" o-- "*" Song: "favourites"
+Artist "1" o-- "*" Song: "creates"
+Artist "1" o-- "*" Playlist: "publishes"
+
+@enduml
