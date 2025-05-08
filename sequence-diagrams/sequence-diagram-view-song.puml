@@ -1,0 +1,109 @@
+@startuml
+
+hide footbox
+skinparam BackgroundColor transparent
+
+actor Listener as User
+boundary ":SongPreview\nView" as View0
+boundary ":Song\nView" as View1
+participant ":Song\nController" as Controller
+control ":ViewSong\nInteractor" as Interactor <<InputBoundary>>
+database ":Listener\nRepository" as ListenerRepository <<Gateway>>
+database ":Song\nRepository" as SongRepository <<Gateway>>
+database ":Favourites\nRepository" as FavouritesRepository <<Gateway>>
+participant ":Song\nAssembler" as SongAssembler
+participant ":Song\nPresenter" as Presenter <<OutputBoundary>>
+participant ":Song\nViewModel" as ViewModel <<DTO>>
+
+User -> View0: click on relevant elements\ne.g. title, preview image
+activate View0
+
+View0 -> View1: redirect to placeholder
+deactivate View0
+activate View1
+
+View1 -> Controller: pass RequestObject\n(listener_id, song_id)
+activate Controller
+
+Controller -> Interactor: pass RequestModel\n(listener_id, song_id)
+deactivate Controller
+activate Interactor
+    
+alt OK
+    par
+    Interactor -> ListenerRepository: check if Listener exists\n(listener_id)
+    activate ListenerRepository
+    return TRUE
+    deactivate ListenerRepository
+
+    else
+    Interactor -> SongRepository: get Song\n(song_id)
+    activate SongRepository
+    return song
+    deactivate SongRepository
+
+    end
+
+    Interactor -> FavouritesRepository: check if Song is Listener's favourite\n(listener_id, song_id)
+    activate FavouritesRepository
+    return is_favourite
+    deactivate FavouritesRepository
+
+    Interactor -> SongAssembler: bundle into ResponseModel\n(song, is_favourite)
+    activate SongAssembler
+    return song_dto
+    deactivate SongAssembler
+
+    Interactor ->> Presenter: pass ResponseModel\n(OK(song_dto))
+    deactivate Interactor
+    activate Presenter
+
+    Presenter ->> ViewModel: update ViewModel\n(OK(song_dto))
+    deactivate Presenter
+    activate ViewModel
+
+    View1 <- ViewModel: display contents based on ViewModel
+    deactivate ViewModel
+    newpage
+
+else Error: Listener not found
+    Interactor -> ListenerRepository: check if Listener exists\n(listener_id)
+    activate Interactor
+    activate ListenerRepository
+    return FALSE
+    deactivate ListenerRepository
+
+    Interactor ->> Presenter: pass ResponseModel\n(Error: Listener not found)
+    deactivate Interactor
+    activate Presenter
+
+    Presenter ->> ViewModel: update ViewModel\n(Error: Listener not found)
+    deactivate Presenter
+    activate ViewModel
+
+    View1 <- ViewModel: display error message
+    deactivate ViewModel
+
+else Error: Song not found
+    Interactor -> SongRepository: get Song\n(song_id)
+    activate Interactor
+    activate SongRepository
+    return NULL
+    deactivate SongRepository
+
+    Interactor ->> Presenter: pass ResponseModel\n(Error: Song not found)
+    deactivate Interactor
+    activate Presenter
+    
+    Presenter ->> ViewModel: update ViewModel\n(Error: Song not found)
+    deactivate Presenter
+    activate ViewModel
+
+    View1 <- ViewModel: display error message
+    deactivate ViewModel
+
+end
+
+deactivate View1
+
+@enduml

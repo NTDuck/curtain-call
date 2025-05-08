@@ -1,0 +1,103 @@
+@startuml
+
+hide footbox
+skinparam BackgroundColor transparent
+
+actor Listener as User
+boundary ":Song\nView" as View
+participant ":Song\nController" as Controller
+control ":ListenToSongOnline\nInteractor" as Interactor <<InputBoundary>>
+database ":Listener\nRepository" as ListenerRepository <<Gateway>>
+database ":Song\nRepository" as SongRepository <<Gateway>>
+participant ":Song\nPresenter" as Presenter <<OutputBoundary>>
+participant ":Song\nViewModel" as ViewModel <<DTO>>
+
+User -> View: click on the play icon
+activate View
+
+View -> View: change icon to buffering
+
+View -> Controller: pass RequestObject\n(listener_id, song_id)
+activate Controller
+
+Controller -> Interactor: pass RequestModel\n(listener_id, song_id)
+deactivate Controller
+activate Interactor
+    
+alt OK
+    Interactor -> ListenerRepository: check if Listener exists\n(listener_id)
+    activate ListenerRepository
+    Interactor <-- ListenerRepository: TRUE
+
+    Interactor -> ListenerRepository: check if Listener has subscription\n(listener_id)
+    return is_subscribed
+    deactivate ListenerRepository
+
+    alt is_subscribed
+        Interactor -> SongRepository: get Song URL\n(song_id)
+        activate SongRepository
+    else
+        Interactor -> SongRepository: get premium Song URL\n(song_id)
+    end
+    Interactor <-- SongRepository: song_url
+    deactivate SongRepository
+
+    Interactor ->> Presenter: pass ResponseModel\n(OK(song_url))
+    deactivate Interactor
+    activate Presenter
+
+    Presenter ->> ViewModel: update ViewModel\n(OK(song_url))
+    deactivate Presenter
+    activate ViewModel
+
+    View <- ViewModel: play audio from song_url
+    deactivate ViewModel
+
+    View -> View: change icon to loading
+    newpage
+
+else Error: Listener not found
+    Interactor -> ListenerRepository: check if Listener exists\n(listener_id)
+    activate Interactor
+    activate ListenerRepository
+    return FALSE
+    deactivate ListenerRepository
+
+    Interactor ->> Presenter: pass ResponseModel\n(Error: Listener not found)
+    deactivate Interactor
+    activate Presenter
+
+    Presenter ->> ViewModel: update ViewModel\n(Error: Listener not found)
+    deactivate Presenter
+    activate ViewModel
+
+    View <- ViewModel: display error message
+    deactivate ViewModel
+    
+    View -> View: change icon to cancelled
+
+else Error: Song not found
+    Interactor -> SongRepository: get Song\n(song_id)
+    activate Interactor
+    activate SongRepository
+    return NULL
+    deactivate SongRepository
+
+    Interactor ->> Presenter: pass ResponseModel\n(Error: Song not found)
+    deactivate Interactor
+    activate Presenter
+    
+    Presenter ->> ViewModel: update ViewModel\n(Error: Song not found)
+    deactivate Presenter
+    activate ViewModel
+
+    View <- ViewModel: display error message
+    deactivate ViewModel
+    
+    View -> View: change icon to cancelled
+
+end
+
+deactivate View
+
+@enduml
