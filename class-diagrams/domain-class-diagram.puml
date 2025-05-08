@@ -4,92 +4,160 @@ left to right direction
 hide empty members
 skinparam BackgroundColor transparent
 
-class User {
-    + id: Uuid
-    + credentials: UserCredentials
+class User <<struct>> {
+  + id: Uuid
+  + credentials: UserCredentials
 }
 
-class UserCredentials {
-    + username: String
-    + password: String
+class UserCredentials <<struct>> {
+  + username: String
+  + email: String
+  + password: String
 }
 
-class Listener {
-    + favourites: Vec<Song>
+UserCredentials -- User
+
+class Listener <<struct>> {
+  + metadata: ListenerMetadata
+  + subscripion: ListenerSubscription
+  + preferences: ListenerPreferences
 }
 
-class PremiumListener {
-    + playlists: Vec<Playlist>
-    + subscription: Subscription
+Listener <|-- User
+
+class ListenerMetadata <<struct>> {
+  + dateOfBirth: Date
+  + biography: String
+  + gender: String
+  + location: String
+  + language: String
 }
 
-class Artist {
-    + metadata: ArtistMetadata
-    + albums: Vec<Playlist>
-    + singles: Vec<Song>
+ListenerMetadata -- Listener
+
+class ListenerContent <<struct>> {
+  + favourites: ListenerFavourites
+  + follows: ListenerFollows
 }
 
-class ArtistMetadata {
-    + name: String
-    + monthly_listeners: u64
-    + is_verified: bool
+ListenerContent -- Listener
+
+class ListenerFavourites <<struct>> {
+  + songIds: Vec<Uuid>
+  + playlistIds: Vec<Uuid>
+  + artistIds: Vec<Uuid>
 }
 
-class Subscription {
-    + id: Uuid
-    + start_date: SystemTime
-    + end_date: SystemTime
+ListenerFavourites -- ListenerContent
 
-    + is_active(): bool
+class ListenerFollows <<struct>> {
+  + playlistIds: Vec<Uuid>
+  + artistIds: Vec<Uuid>
 }
 
-class Song {
-    + id: Uuid
-    + metadata: SongMetadata
-    + audio: SongAudio
+ListenerFollows -- ListenerContent
+
+enum ListenerSubscription <<enum>> {
 }
 
-class SongMetadata {
-    + title: String
-    + artists: Vec<Artist>
-    + duration: Duration
+ListenerSubscription -- Listener
+
+class Free <<variant>> {
 }
 
-class SongAudio {
-    + normal_url: String
-    + premium_url: String
+Free -- ListenerSubscription
+
+class Premium <<variant>> {
+  + started: DateTime
+  + expires: DateTime
 }
 
-class Playlist {
-    + id: Uuid
-    + metadata: PlaylistMetadata
-    + tracks: Vec<Song>
+Premium -- ListenerSubscription
+
+class Cancelled <<variant>> {
+  + started: DateTime
+  + cancelled: DateTime
 }
 
-class PlaylistMetadata {
-    + title: String
-    + owner: User
-    + is_public: bool
+Cancelled -- ListenerSubscription
+
+class Expired <<variant>> {
+  + started: DateTime
+  + expired: DateTime
 }
 
-' Inheritance
-Listener <|-- PremiumListener
-User <|-- Listener
-User <|-- Artist
+Expired -- ListenerSubscription
 
-' Compositions
-User "1" *-- "1" UserCredentials: "has"
-PremiumListener "1" *-- "1" Subscription: "has"
-Artist "1" *-- "1" ArtistMetadata: "has"
-Song "1" *-- "1" SongMetadata: "has"
-Song "1" *-- "1" SongAudio: "has"
-Playlist "1" *-- "1" PlaylistMetadata: "has"
+class ListenerPreferences <<struct>> {
+  + darkModeEnabled: bool
+  + explicitContentEnabled: bool
+  + autoplayEnabled: bool
+}
 
-' Aggregations
-Playlist "1" o-- "*" Song: "contains"
-PremiumListener "1" o-- "*" Playlist: "owns"
-Listener "1" o-- "*" Song: "favourites"
-Artist "1" o-- "*" Song: "creates"
-Artist "1" o-- "*" Playlist: "publishes"
+ListenerPreferences -- Listener
+
+class Artist <<struct>> {
+  + metadata: ArtistMetadata
+}
+
+Artist <|-- User
+
+class ArtistMetadata <<struct>> {
+  + displayName: String
+  + socialLinks: Vec<String>
+  + genres: Vec<String>
+  + avatarUri: String
+}
+
+ArtistMetadata -- Artist
+
+class ArtistContent <<struct>> {
+  + singleIds: Vec<Uuid>
+  + albumIds: Vec<Uuid>
+}
+
+ArtistContent -- Artist
+
+class ArtistAnalytics <<struct>> {
+  + playCount: usize
+  + followerCount: usize
+}
+
+ArtistAnalytics -- Artist
+
+class Song <<struct>> {
+  + id: Uuid
+  + metadata: SongMetadata
+  + audio: SongAudio
+}
+
+class SongMetadata <<struct>> {
+  + title: String
+  + artistIds: Vec<Uuid>
+  + duration: Duration
+}
+
+SongMetadata -- Song
+
+class SongAudio <<struct>> {
+  + basicUri: String
+  + premiumUri: String
+}
+
+SongAudio -- Song
+
+class Playlist <<struct>> {
+  + id: Uuid
+  + metadata: PlaylistMetadata
+  + trackIds: Vec<Uuid>
+}
+
+class PlaylistMetadata <<struct>> {
+  + title: String
+  + artistIds: Vec<Uuid>
+  + isPublic: bool
+}
+
+PlaylistMetadata -- Playlist
 
 @enduml
