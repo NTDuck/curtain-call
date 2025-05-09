@@ -4,108 +4,137 @@ hide footbox
 skinparam BackgroundColor transparent
 
 actor Guest
-boundary GuestView
-boundary LogInView
-boundary HomeListenerView
-participant 
-participant ":Song\nController" as Controller
-control ":ViewSong\nInteractor" as Interactor <<InputBoundary>>
-database ":Listener\nRepository" as ListenerRepository <<Gateway>>
-database ":Song\nRepository" as SongRepository <<Gateway>>
-database ":Favourites\nRepository" as FavouritesRepository <<Gateway>>
-participant ":Song\nAssembler" as SongAssembler
-participant ":Song\nPresenter" as Presenter <<OutputBoundary>>
-participant ":Song\nViewModel" as ViewModel <<DTO>>
+actor Listener
+boundary GuestHomeView
+boundary LoginView
+boundary ListenerHomeView
+participant LoginController
+control LoginInteractor <<InputBoundary>>
+participant UserCredentialsVerifier <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant PasswordEncoder <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant AuthTokenRepository <<Gateway>>
+participant LoginPresenter <<OutputBoundary>>
 
-User -> View0: click on relevant elements\ne.g. title, preview image
-activate View0
+Guest -> GuestHomeView: click on login button
+activate Guest
+activate GuestHomeView
 
-View0 -> View1: redirect to placeholder
-deactivate View0
-activate View1
+GuestHomeView -> LoginView: redirect
+deactivate GuestHomeView
+activate LoginView
 
-View1 -> Controller: pass RequestObject\n(listener_id, song_id)
-activate Controller
+Guest -> LoginView: enter credentials
+Guest -> LoginView: click on submit button
+LoginView -> LoginController: pass RequestObject\n(credentials)
+activate LoginController
 
-Controller -> Interactor: pass RequestModel\n(listener_id, song_id)
-deactivate Controller
-activate Interactor
+LoginController ->> LoginInteractor: repackage & pass RequestModel\n(credentials)
+deactivate LoginController
+activate LoginInteractor
     
 alt OK
-    par
-    Interactor -> ListenerRepository: check if Listener exists\n(listener_id)
+    LoginInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate UserCredentialsVerifier
+    return true
+    deactivate UserCredentialsVerifier
+
+    LoginInteractor -> ListenerRepository: get Listener by username\n(credentials.username)
     activate ListenerRepository
-    return TRUE
+    return Some(listener)
     deactivate ListenerRepository
 
-    else
-    Interactor -> SongRepository: get Song\n(song_id)
-    activate SongRepository
-    return song
-    deactivate SongRepository
+    LoginInteractor -> PasswordEncoder: check if Listener's password matches provided password\n(listener.credentials.password, credentials.password)
+    activate PasswordEncoder
+    return true
+    deactivate PasswordEncoder
 
-    end
+    LoginInteractor -> AuthTokenGenerator: generate authentication token for Listener
+    activate AuthTokenGenerator
+    return authToken
+    deactivate AuthTokenGenerator
 
-    Interactor -> FavouritesRepository: check if Song is Listener's favourite\n(listener_id, song_id)
-    activate FavouritesRepository
-    return is_favourite
-    deactivate FavouritesRepository
+    LoginInteractor ->> LoginPresenter: pass ResponseModel\n(Ok(authToken))
+    deactivate LoginInteractor
+    activate LoginPresenter
 
-    Interactor -> SongAssembler: bundle into ResponseModel\n(song, is_favourite)
-    activate SongAssembler
-    return song_dto
-    deactivate SongAssembler
+    LoginPresenter ->> AuthTokenRepository: store authentication token\n(authToken)
 
-    Interactor ->> Presenter: pass ResponseModel\n(OK(song_dto))
-    deactivate Interactor
-    activate Presenter
+    LoginPresenter ->> ListenerHomeView: update the ViewModel\n(Ok())
+    deactivate LoginPresenter
+    activate ListenerHomeView
 
-    Presenter ->> ViewModel: update ViewModel\n(OK(song_dto))
-    deactivate Presenter
-    activate ViewModel
+    ListenerHomeView -> Listener: see the result of the interaction
+    activate Listener
 
-    View1 <- ViewModel: display contents based on ViewModel
-    deactivate ViewModel
+    deactivate Listener
+    deactivate ListenerHomeView
     newpage
 
-else Error: Listener not found
-    Interactor -> ListenerRepository: check if Listener exists\n(listener_id)
-    activate Interactor
+else Error: Listener credentials in incorrect format
+    LoginInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate UserCredentialsVerifier
+    return false
+    deactivate UserCredentialsVerifier
+
+    LoginInteractor ->> LoginPresenter: pass ResponseModel\n(Err(CredentialsMalformed))
+    deactivate LoginInteractor
+    activate LoginPresenter
+
+    LoginPresenter ->> LoginView: update the ViewModel\n(Err(CredentialsMalformed))
+    deactivate LoginPresenter
+    
+    LoginView -> Guest: see the result of the interaction
+
+else Error: Listener does not exist
+    LoginInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate UserCredentialsVerifier
+    return true
+    deactivate UserCredentialsVerifier
+
+    LoginInteractor -> ListenerRepository: get Listener by username\n(credentials.username)
     activate ListenerRepository
-    return FALSE
+    return None
     deactivate ListenerRepository
 
-    Interactor ->> Presenter: pass ResponseModel\n(Error: Listener not found)
-    deactivate Interactor
-    activate Presenter
+    LoginInteractor ->> LoginPresenter: pass ResponseModel\n(Err(CredentialsInvalid))
+    deactivate LoginInteractor
+    activate LoginPresenter
 
-    Presenter ->> ViewModel: update ViewModel\n(Error: Listener not found)
-    deactivate Presenter
-    activate ViewModel
+    LoginPresenter ->> LoginView: update the ViewModel\n(Err(CredentialsInvalid))
+    deactivate LoginPresenter
 
-    View1 <- ViewModel: display error message
-    deactivate ViewModel
+    LoginView -> Guest: see the result of the interaction
 
-else Error: Song not found
-    Interactor -> SongRepository: get Song\n(song_id)
-    activate Interactor
-    activate SongRepository
-    return NULL
-    deactivate SongRepository
+else Error: Password does not match
+    LoginInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate UserCredentialsVerifier
+    return true
+    deactivate UserCredentialsVerifier
 
-    Interactor ->> Presenter: pass ResponseModel\n(Error: Song not found)
-    deactivate Interactor
-    activate Presenter
-    
-    Presenter ->> ViewModel: update ViewModel\n(Error: Song not found)
-    deactivate Presenter
-    activate ViewModel
+    LoginInteractor -> ListenerRepository: get Listener by username\n(credentials.username)
+    activate ListenerRepository
+    return Some(listener)
+    deactivate ListenerRepository
 
-    View1 <- ViewModel: display error message
-    deactivate ViewModel
+    LoginInteractor -> PasswordEncoder: check if Listener's password matches provided password\n(listener.credentials.password, credentials.password)
+    activate PasswordEncoder
+    return false
+    deactivate PasswordEncoder
+
+    LoginInteractor ->> LoginPresenter: pass ResponseModel\n(Err(CredentialsInvalid))
+    deactivate LoginInteractor
+    activate LoginPresenter
+
+    LoginPresenter ->> LoginView: update the ViewModel\n(Err(CredentialsInvalid))
+    deactivate LoginPresenter
+
+    LoginView -> Guest: see the result of the interaction
 
 end
 
-deactivate View1
+deactivate Guest
+deactivate LoginView
 
 @enduml
