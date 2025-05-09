@@ -127,7 +127,7 @@ else Error: Password does not match
     deactivate LoginInteractor
     activate LoginPresenter
 
-    LoginPresenter ->> LoginView: update the ViewModel\n(Err(CredentialsInvalid))
+    LoginPresenter ->> LoginView: repackage & update the ViewModel\n(Err(CredentialsInvalid))
     deactivate LoginPresenter
 
     LoginView -> Guest: see the result of the interaction

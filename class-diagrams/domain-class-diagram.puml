@@ -11,7 +11,6 @@ class User <<struct>> {
 
 class UserCredentials <<struct>> {
   + username: String
-  + email: String
   + password: String
 }
 
@@ -26,8 +25,9 @@ class Listener <<struct>> {
 Listener <|-- User
 
 class ListenerMetadata <<struct>> {
+  + email: String
   + dateOfBirth: Date
-  + biography: String
+  + biography: Option<String>
   + gender: String
   + location: String
   + language: String
@@ -36,8 +36,8 @@ class ListenerMetadata <<struct>> {
 ListenerMetadata -- Listener
 
 class ListenerContent <<struct>> {
+  + playlistIds: Vec<Uuid>
   + favourites: ListenerFavourites
-  + follows: ListenerFollows
 }
 
 ListenerContent -- Listener
@@ -49,11 +49,6 @@ class ListenerFavourites <<struct>> {
 }
 
 ListenerFavourites -- ListenerContent
-
-class ListenerFollows <<struct>> {
-  + playlistIds: Vec<Uuid>
-  + artistIds: Vec<Uuid>
-}
 
 ListenerFollows -- ListenerContent
 
@@ -98,12 +93,17 @@ ListenerPreferences -- Listener
 
 class Artist <<struct>> {
   + metadata: ArtistMetadata
+  + content: ArtistContent
+  + analytics: ArtistAnalytics
 }
 
 Artist <|-- User
 
 class ArtistMetadata <<struct>> {
+  + email: String
+  + dateOfBirth: Date
   + displayName: String
+  + biography: Option<String>
   + socialLinks: Vec<String>
   + genres: Vec<String>
   + avatarUri: String
@@ -120,7 +120,7 @@ ArtistContent -- Artist
 
 class ArtistAnalytics <<struct>> {
   + playCount: usize
-  + followerCount: usize
+  + favouritesCount: usize
 }
 
 ArtistAnalytics -- Artist
@@ -129,11 +129,13 @@ class Song <<struct>> {
   + id: Uuid
   + metadata: SongMetadata
   + audio: SongAudio
+  + analytics: SongAnalytics
 }
 
 class SongMetadata <<struct>> {
   + title: String
   + artistIds: Vec<Uuid>
+  + lyrics: Option<String>
   + duration: Duration
 }
 
@@ -146,10 +148,18 @@ class SongAudio <<struct>> {
 
 SongAudio -- Song
 
+class SongAnalytics <<struct>> {
+  + playCount: usize
+  + favouritesCount: usize
+}
+
+SongAnalytics -- Song
+
 class Playlist <<struct>> {
   + id: Uuid
-  + metadata: PlaylistMetadata
   + trackIds: Vec<Uuid>
+  + metadata: PlaylistMetadata
+  + analytics: PlaylistAnalytics
 }
 
 class PlaylistMetadata <<struct>> {
@@ -159,5 +169,12 @@ class PlaylistMetadata <<struct>> {
 }
 
 PlaylistMetadata -- Playlist
+
+class PlaylistAnalytics <<struct>> {
+  + playCount: usize
+  + favouritesCount: usize
+}
+
+PlaylistAnalytics -- Playlist
 
 @enduml

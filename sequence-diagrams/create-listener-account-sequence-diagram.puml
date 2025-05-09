@@ -1,0 +1,41 @@
+@startuml
+
+hide footbox
+skinparam BackgroundColor transparent
+
+actor Guest
+boundary GuestHomeView
+boundary CreateListenerAccountView
+participant CreateListenerAccountController
+control CreateListenerInteractor <<InputBoundary>>
+participant UserCredentialsVerifier <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant UuidGenerator <<Gateway>>
+participant CreateListenerAccountPresenter <<OutputBoundary>>
+
+Guest -> GuestHomeView: click on create account button
+activate Guest
+activate GuestHomeView
+
+GuestHomeView -> CreateListenerAccountView: redirect
+deactivate GuestHomeView
+activate CreateListenerAccountView
+
+Guest -> CreateListenerAccountView: enter credentials & metadata
+Guest -> CreateListenerAccountView: click on submit button
+CreateListenerAccountView -> CreateListenerAccountController: pass RequestObject\n(credentials, metadata)
+activate CreateListenerAccountController
+
+CreateListenerAccountController ->> CreateListenerInteractor: repackage & pass RequestModel\n(credentials, metadata)
+deactivate CreateListenerAccountController
+activate CreateListenerInteractor
+
+alt OK
+    CreateListenerInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate UserCredentialsVerifier
+    return true
+    deactivate UserCredentialsVerifier
+
+    CreateListenerInteractor -> ListenerRepository: check if Listener with username already exists
+
+@enduml
