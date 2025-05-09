@@ -3,9 +3,11 @@
 hide footbox
 skinparam BackgroundColor transparent
 
-actor Listener as User
-boundary ":SongPreview\nView" as View0
-boundary ":Song\nView" as View1
+actor Guest
+boundary GuestView
+boundary LogInView
+boundary HomeListenerView
+participant 
 participant ":Song\nController" as Controller
 control ":ViewSong\nInteractor" as Interactor <<InputBoundary>>
 database ":Listener\nRepository" as ListenerRepository <<Gateway>>
