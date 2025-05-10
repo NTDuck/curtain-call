@@ -3,5 +3,115 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary RecommendedSongsLinkView
+boundary RecommendedSongsView
+boundary LoginView
+participant ViewRecommendedSongController
+control ViewRecommendedSongInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant Recommendator <<Gateway>>
+participant ViewRecommendedSongPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> RecommendedSongsLinkView: click on navigatable element
+activate "Guest/Listener"
+activate RecommendedSongsLinkView
+
+RecommendedSongsLinkView -> RecommendedSongsView: redirect
+deactivate RecommendedSongsLinkView
+activate RecommendedSongsView
+
+RecommendedSongsView -> ViewRecommendedSongController: pass RequestObject\n(paginationRequest)
+activate ViewRecommendedSongController
+
+alt OK
+    ViewRecommendedSongController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewRecommendedSongController -> ViewRecommendedSongInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
+    deactivate ViewRecommendedSongController
+    activate ViewRecommendedSongInteractor
+
+    ViewRecommendedSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewRecommendedSongInteractor <- AuthTokenGenerator: true
+
+    ViewRecommendedSongInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    ViewRecommendedSongInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    ViewRecommendedSongInteractor -> Recommendator: show recommended Songs for Listener\n(listenerId, paginationRequest)
+    activate Recommendator
+    return songs
+    deactivate Recommendator
+
+    ViewRecommendedSongInteractor ->> ViewRecommendedSongPresenter: pass ResponseModel\n(songs)
+    deactivate ViewRecommendedSongInteractor
+    activate ViewRecommendedSongPresenter
+
+    ViewRecommendedSongPresenter ->> RecommendedSongsView: repackage & upate ViewModel\n(songs)
+    deactivate ViewRecommendedSongPresenter
+
+    RecommendedSongsView -> "Guest/Listener": see the result of the interaction
+    deactivate RecommendedSongsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    ViewRecommendedSongController -> AuthTokenRepository: get authentication token
+    activate ViewRecommendedSongController
+    activate "Guest/Listener"
+    activate RecommendedSongsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ViewRecommendedSongController -> LoginView: redirect
+    deactivate RecommendedSongsView
+    deactivate ViewRecommendedSongController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authnetication token invalid
+    ViewRecommendedSongController -> AuthTokenRepository: get authentication token
+    activate ViewRecommendedSongController
+    activate "Guest/Listener"
+    activate RecommendedSongsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewRecommendedSongController -> ViewRecommendedSongInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ViewRecommendedSongController
+    activate ViewRecommendedSongInteractor
+
+    ViewRecommendedSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ViewRecommendedSongInteractor ->> ViewRecommendedSongPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewRecommendedSongInteractor
+    activate ViewRecommendedSongPresenter
+
+    ViewRecommendedSongPresenter ->> RecommendedSongsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewRecommendedSongPresenter
+
+    RecommendedSongsView -> LoginView: redirect
+    deactivate RecommendedSongsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml

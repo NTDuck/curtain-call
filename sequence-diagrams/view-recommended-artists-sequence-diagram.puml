@@ -3,5 +3,115 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary RecommendedArtistsLinkView
+boundary RecommendedArtistsView
+boundary LoginView
+participant ViewRecommendedArtistController
+control ViewRecommendedArtistInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant Recommendator <<Gateway>>
+participant ViewRecommendedArtistPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> RecommendedArtistsLinkView: click on navigatable element
+activate "Guest/Listener"
+activate RecommendedArtistsLinkView
+
+RecommendedArtistsLinkView -> RecommendedArtistsView: redirect
+deactivate RecommendedArtistsLinkView
+activate RecommendedArtistsView
+
+RecommendedArtistsView -> ViewRecommendedArtistController: pass RequestObject\n(paginationRequest)
+activate ViewRecommendedArtistController
+
+alt OK
+    ViewRecommendedArtistController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewRecommendedArtistController -> ViewRecommendedArtistInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
+    deactivate ViewRecommendedArtistController
+    activate ViewRecommendedArtistInteractor
+
+    ViewRecommendedArtistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewRecommendedArtistInteractor <- AuthTokenGenerator: true
+
+    ViewRecommendedArtistInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    ViewRecommendedArtistInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    ViewRecommendedArtistInteractor -> Recommendator: show recommended Artists for Listener\n(listenerId, paginationRequest)
+    activate Recommendator
+    return artists
+    deactivate Recommendator
+
+    ViewRecommendedArtistInteractor ->> ViewRecommendedArtistPresenter: pass ResponseModel\n(artists)
+    deactivate ViewRecommendedArtistInteractor
+    activate ViewRecommendedArtistPresenter
+
+    ViewRecommendedArtistPresenter ->> RecommendedArtistsView: repackage & upate ViewModel\n(artists)
+    deactivate ViewRecommendedArtistPresenter
+
+    RecommendedArtistsView -> "Guest/Listener": see the result of the interaction
+    deactivate RecommendedArtistsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    ViewRecommendedArtistController -> AuthTokenRepository: get authentication token
+    activate ViewRecommendedArtistController
+    activate "Guest/Listener"
+    activate RecommendedArtistsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ViewRecommendedArtistController -> LoginView: redirect
+    deactivate RecommendedArtistsView
+    deactivate ViewRecommendedArtistController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authnetication token invalid
+    ViewRecommendedArtistController -> AuthTokenRepository: get authentication token
+    activate ViewRecommendedArtistController
+    activate "Guest/Listener"
+    activate RecommendedArtistsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewRecommendedArtistController -> ViewRecommendedArtistInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate ViewRecommendedArtistController
+    activate ViewRecommendedArtistInteractor
+
+    ViewRecommendedArtistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ViewRecommendedArtistInteractor ->> ViewRecommendedArtistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewRecommendedArtistInteractor
+    activate ViewRecommendedArtistPresenter
+
+    ViewRecommendedArtistPresenter ->> RecommendedArtistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewRecommendedArtistPresenter
+
+    RecommendedArtistsView -> LoginView: redirect
+    deactivate RecommendedArtistsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml

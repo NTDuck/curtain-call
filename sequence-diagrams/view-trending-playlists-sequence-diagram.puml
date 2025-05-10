@@ -3,5 +3,112 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary TrendingPlaylistsLinkView
+boundary TrendingPlaylistsView
+boundary LoginView
+participant ViewTrendingPlaylistController
+control ViewTrendingPlaylistInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant TrendAnalyzer <<Gateway>>
+participant ViewTrendingPlaylistPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> TrendingPlaylistsLinkView: click on navigatable element
+activate "Guest/Listener"
+activate TrendingPlaylistsLinkView
+
+TrendingPlaylistsLinkView -> TrendingPlaylistsView: redirect
+deactivate TrendingPlaylistsLinkView
+activate TrendingPlaylistsView
+
+TrendingPlaylistsView -> ViewTrendingPlaylistController: pass RequestObject\n(paginationRequest)
+activate ViewTrendingPlaylistController
+
+alt OK
+    ViewTrendingPlaylistController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewTrendingPlaylistController -> ViewTrendingPlaylistInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
+    deactivate ViewTrendingPlaylistController
+    activate ViewTrendingPlaylistInteractor
+
+    ViewTrendingPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewTrendingPlaylistInteractor <- AuthTokenGenerator: true
+    deactivate AuthTokenGenerator
+
+    ViewTrendingPlaylistInteractor -> TrendAnalyzer: show trending Playlists\n(paginationRequest)
+    activate TrendAnalyzer
+    return playlists
+    deactivate TrendAnalyzer
+
+    ViewTrendingPlaylistInteractor ->> ViewTrendingPlaylistPresenter: pass ResponseModel\n(playlists)
+    deactivate ViewTrendingPlaylistInteractor
+    activate ViewTrendingPlaylistPresenter
+
+    ViewTrendingPlaylistPresenter ->> TrendingPlaylistsView: repackage & upate ViewModel\n(playlists)
+    deactivate ViewTrendingPlaylistPresenter
+
+    TrendingPlaylistsView -> "Guest/Listener": see the result of the interaction
+    deactivate TrendingPlaylistsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    ViewTrendingPlaylistController -> AuthTokenRepository: get authentication token
+    activate ViewTrendingPlaylistController
+    activate "Guest/Listener"
+    activate TrendingPlaylistsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ViewTrendingPlaylistController -> LoginView: redirect
+    deactivate TrendingPlaylistsView
+    deactivate ViewTrendingPlaylistController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authnetication token invalid
+    ViewTrendingPlaylistController -> AuthTokenRepository: get authentication token
+    activate ViewTrendingPlaylistController
+    activate "Guest/Listener"
+    activate TrendingPlaylistsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewTrendingPlaylistController -> ViewTrendingPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate ViewTrendingPlaylistController
+    activate ViewTrendingPlaylistInteractor
+
+    ViewTrendingPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ViewTrendingPlaylistInteractor ->> ViewTrendingPlaylistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewTrendingPlaylistInteractor
+    activate ViewTrendingPlaylistPresenter
+
+    ViewTrendingPlaylistPresenter ->> TrendingPlaylistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewTrendingPlaylistPresenter
+
+    TrendingPlaylistsView -> LoginView: redirect
+    deactivate TrendingPlaylistsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml

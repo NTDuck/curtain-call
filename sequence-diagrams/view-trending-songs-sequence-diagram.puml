@@ -3,5 +3,112 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary TrendingSongsLinkView
+boundary TrendingSongsView
+boundary LoginView
+participant ViewTrendingSongController
+control ViewTrendingSongInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant TrendAnalyzer <<Gateway>>
+participant ViewTrendingSongPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> TrendingSongsLinkView: click on navigatable element
+activate "Guest/Listener"
+activate TrendingSongsLinkView
+
+TrendingSongsLinkView -> TrendingSongsView: redirect
+deactivate TrendingSongsLinkView
+activate TrendingSongsView
+
+TrendingSongsView -> ViewTrendingSongController: pass RequestObject\n(paginationRequest)
+activate ViewTrendingSongController
+
+alt OK
+    ViewTrendingSongController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewTrendingSongController -> ViewTrendingSongInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
+    deactivate ViewTrendingSongController
+    activate ViewTrendingSongInteractor
+
+    ViewTrendingSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewTrendingSongInteractor <- AuthTokenGenerator: true
+    deactivate AuthTokenGenerator
+
+    ViewTrendingSongInteractor -> TrendAnalyzer: show trending Songs\n(paginationRequest)
+    activate TrendAnalyzer
+    return songs
+    deactivate TrendAnalyzer
+
+    ViewTrendingSongInteractor ->> ViewTrendingSongPresenter: pass ResponseModel\n(songs)
+    deactivate ViewTrendingSongInteractor
+    activate ViewTrendingSongPresenter
+
+    ViewTrendingSongPresenter ->> TrendingSongsView: repackage & upate ViewModel\n(songs)
+    deactivate ViewTrendingSongPresenter
+
+    TrendingSongsView -> "Guest/Listener": see the result of the interaction
+    deactivate TrendingSongsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    ViewTrendingSongController -> AuthTokenRepository: get authentication token
+    activate ViewTrendingSongController
+    activate "Guest/Listener"
+    activate TrendingSongsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ViewTrendingSongController -> LoginView: redirect
+    deactivate TrendingSongsView
+    deactivate ViewTrendingSongController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authnetication token invalid
+    ViewTrendingSongController -> AuthTokenRepository: get authentication token
+    activate ViewTrendingSongController
+    activate "Guest/Listener"
+    activate TrendingSongsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewTrendingSongController -> ViewTrendingSongInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ViewTrendingSongController
+    activate ViewTrendingSongInteractor
+
+    ViewTrendingSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ViewTrendingSongInteractor ->> ViewTrendingSongPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewTrendingSongInteractor
+    activate ViewTrendingSongPresenter
+
+    ViewTrendingSongPresenter ->> TrendingSongsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewTrendingSongPresenter
+
+    TrendingSongsView -> LoginView: redirect
+    deactivate TrendingSongsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml

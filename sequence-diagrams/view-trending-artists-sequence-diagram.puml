@@ -3,5 +3,112 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary TrendingArtistsLinkView
+boundary TrendingArtistsView
+boundary LoginView
+participant ViewTrendingArtistController
+control ViewTrendingArtistInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant TrendAnalyzer <<Gateway>>
+participant ViewTrendingArtistPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> TrendingArtistsLinkView: click on navigatable element
+activate "Guest/Listener"
+activate TrendingArtistsLinkView
+
+TrendingArtistsLinkView -> TrendingArtistsView: redirect
+deactivate TrendingArtistsLinkView
+activate TrendingArtistsView
+
+TrendingArtistsView -> ViewTrendingArtistController: pass RequestObject\n(paginationRequest)
+activate ViewTrendingArtistController
+
+alt OK
+    ViewTrendingArtistController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewTrendingArtistController -> ViewTrendingArtistInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
+    deactivate ViewTrendingArtistController
+    activate ViewTrendingArtistInteractor
+
+    ViewTrendingArtistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewTrendingArtistInteractor <- AuthTokenGenerator: true
+    deactivate AuthTokenGenerator
+
+    ViewTrendingArtistInteractor -> TrendAnalyzer: show trending Artists\n(paginationRequest)
+    activate TrendAnalyzer
+    return artists
+    deactivate TrendAnalyzer
+
+    ViewTrendingArtistInteractor ->> ViewTrendingArtistPresenter: pass ResponseModel\n(artists)
+    deactivate ViewTrendingArtistInteractor
+    activate ViewTrendingArtistPresenter
+
+    ViewTrendingArtistPresenter ->> TrendingArtistsView: repackage & upate ViewModel\n(artists)
+    deactivate ViewTrendingArtistPresenter
+
+    TrendingArtistsView -> "Guest/Listener": see the result of the interaction
+    deactivate TrendingArtistsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    ViewTrendingArtistController -> AuthTokenRepository: get authentication token
+    activate ViewTrendingArtistController
+    activate "Guest/Listener"
+    activate TrendingArtistsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ViewTrendingArtistController -> LoginView: redirect
+    deactivate TrendingArtistsView
+    deactivate ViewTrendingArtistController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authnetication token invalid
+    ViewTrendingArtistController -> AuthTokenRepository: get authentication token
+    activate ViewTrendingArtistController
+    activate "Guest/Listener"
+    activate TrendingArtistsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewTrendingArtistController -> ViewTrendingArtistInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate ViewTrendingArtistController
+    activate ViewTrendingArtistInteractor
+
+    ViewTrendingArtistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ViewTrendingArtistInteractor ->> ViewTrendingArtistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewTrendingArtistInteractor
+    activate ViewTrendingArtistPresenter
+
+    ViewTrendingArtistPresenter ->> TrendingArtistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewTrendingArtistPresenter
+
+    TrendingArtistsView -> LoginView: redirect
+    deactivate TrendingArtistsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml
