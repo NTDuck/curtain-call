@@ -3,5 +3,109 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary SearchSongsView
+boundary LoginView
+participant SearchSongsController
+control SearchSongsInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant SongRepository <<Gateway>>
+participant SearchSongsPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> SearchSongsView: enter query
+activate "Guest/Listener"
+activate SearchSongsView
+
+"Guest/Listener" -> SearchSongsView: click on submit button
+
+SearchSongsView -> SearchSongsController: pass RequestObject\n(query)
+activate SearchSongsController
+
+alt OK
+    SearchSongsController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    SearchSongsController -> SearchSongsInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate SearchSongsController
+    deactivate SearchSongsInteractor
+
+    SearchSongsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    SearchSongsInteractor -> SongRepository: search Songs\n(query)
+    activate SongRepository
+    return songs
+    deactivate SongRepository
+
+    SearchSongsInteractor ->> SearchSongsPresenter: pass ResponseModel\n(Ok(songs))
+    deactivate SearchSongsInteractor
+    activate SearchSongsPresenter
+
+    SearchSongsPresenter ->> SearchSongsView: repackage & update ViewModel\n(Ok())
+    deactivate SearchSongsPresenter
+
+    SearchSongsView -> "Guest/Listener": see the result of the interaction
+    deactivate SearchSongsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    SearchSongsController -> AuthTokenRepository: get authentication token
+    activate SearchSongsController
+    activate "Guest/Listener"
+    activate SearchSongsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    SearchSongsController -> LoginView: redirect
+    deactivate SearchSongsView
+    deactivate SearchSongsController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    SearchSongsController -> AuthTokenRepository: get authentication token
+    activate SearchSongsController
+    activate "Guest/Listener"
+    activate SearchSongsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    SearchSongsController -> SearchSongsInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate SearchSongsController
+    activate SearchSongsInteractor
+
+    SearchSongsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    SearchSongsInteractor ->> SearchSongsPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate SearchSongsInteractor
+    activate SearchSongsPresenter
+
+    SearchSongsPresenter ->> SearchSongsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate SearchSongsPresenter
+
+    SearchSongsView -> LoginView: redirect
+    deactivate SearchSongsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml

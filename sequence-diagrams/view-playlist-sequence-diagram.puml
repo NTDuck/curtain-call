@@ -125,6 +125,40 @@ else Error: Authentication token invalid
     deactivate "Guest/Listener"
     newpage
 
+else Error: Playlist not found
+    ViewPlaylistController -> AuthTokenRepository: get authentication token
+    activate ViewPlaylistController
+    activate "Guest/Listener"
+    activate PlaylistView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewPlaylistController -> ViewPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate ViewPlaylistController
+    activate ViewPlaylistInteractor
+
+    ViewPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    ViewPlaylistInteractor -> PlaylistRepository: get Playlist by ID\n(playlistId)
+    activate PlaylistRepository
+    return None
+    deactivate PlaylistRepository
+
+    ViewPlaylistInteractor ->> ViewPlaylistPresenter: pass ResponseModel\n(Err(PlaylistNotFound))
+    deactivate ViewPlaylistInteractor
+    activate ViewPlaylistPresenter
+
+    ViewPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Err(PlaylistNotFound))
+    deactivate ViewPlaylistPresenter
+
+    PlaylistView -> "Guest/Listener": see the result of the interaction
+    deactivate PlaylistView
+    deactivate "Guest/Listener"
+
 else Error: Playlist not visible to Listener
     ViewPlaylistController -> AuthTokenRepository: get authentication token
     activate AuthTokenRepository

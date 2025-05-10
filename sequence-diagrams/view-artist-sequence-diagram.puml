@@ -109,6 +109,40 @@ else Error: Authentication token invalid
     deactivate LoginView
     deactivate "Guest/Listener"
 
+else Error: Artist not found
+    ViewArtistController -> AuthTokenRepository: get authentication token
+    activate ViewArtistController
+    activate "Guest/Listener"
+    activate ArtistView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewArtistController -> ViewArtistInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate ViewArtistController
+    activate ViewArtistInteractor
+
+    ViewArtistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    ViewArtistInteractor -> ArtistRepository: get Artist by ID\n(artistId)
+    activate ArtistRepository
+    return None
+    deactivate ArtistRepository
+
+    ViewArtistInteractor ->> ViewArtistPresenter: pass ResponseModel\n(Err(ArtistNotFound))
+    deactivate ViewArtistInteractor
+    activate ViewArtistPresenter
+
+    ViewArtistPresenter ->> ArtistView: repackage & update ViewModel\n(Err(ArtistNotFound))
+    deactivate ViewArtistPresenter
+
+    ArtistView -> "Guest/Listener": see the result of the interaction
+    deactivate ArtistView
+    deactivate "Guest/Listener"
+
 end
 
 @enduml

@@ -109,6 +109,40 @@ else Error: Authentication token invalid
     deactivate LoginView
     deactivate "Guest/Listener"
 
+else Error: Song not found
+    ViewSongController -> AuthTokenRepository: get authentication token
+    activate ViewSongController
+    activate "Guest/Listener"
+    activate SongView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewSongController -> ViewSongInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ViewSongController
+    activate ViewSongInteractor
+
+    ViewSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    ViewSongInteractor -> SongRepository: get Song by ID\n(songId)
+    activate SongRepository
+    return None
+    deactivate SongRepository
+
+    ViewSongInteractor ->> ViewSongPresenter: pass ResponseModel\n(Err(SongNotFound))
+    deactivate ViewSongInteractor
+    activate ViewSongPresenter
+
+    ViewSongPresenter ->> SongView: repackage & update ViewModel\n(Err(SongNotFound))
+    deactivate ViewSongPresenter
+
+    SongView -> "Guest/Listener": see the result of the interaction
+    deactivate SongView
+    deactivate "Guest/Listener"
+    
 end
 
 @enduml

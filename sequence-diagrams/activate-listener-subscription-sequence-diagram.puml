@@ -3,5 +3,170 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary SubscriptionView
+boundary PaymentView
+boundary LoginView
+participant ActivateSubscriptionController
+control ActivateSubscriptionInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant ActivateSubscriptionPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> SubscriptionView: click on "activate subscription" button
+activate "Guest/Listener"
+activate SubscriptionView
+
+SubscriptionView -> PaymentView: redirect
+deactivate SubscriptionView
+activate PaymentView
+
+"Guest/Listener" -> PaymentView: enter banking credentials
+"Guest/Listener" -> PaymentView: click on submit button
+
+alt OK
+    PaymentView -> ActivateSubscriptionController: pass RequestObject
+    deactivate PaymentView
+    activate ActivateSubscriptionController
+
+    ActivateSubscriptionController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ActivateSubscriptionController -> ActivateSubscriptionInteractor: pass RequestModel\n(authToken)
+    deactivate ActivateSubscriptionController
+    activate ActivateSubscriptionInteractor
+
+    ActivateSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    ActivateSubscriptionInteractor -> ListenerRepository: check if Listener is Premium
+    activate ListenerRepository
+    ActivateSubscriptionInteractor <- ListenerRepository: false
+    ActivateSubscriptionInteractor ->> ListenerRepository: change Listener's subscription to Premium
+    deactivate ListenerRepository
+
+    ActivateSubscriptionInteractor -> ActivateSubscriptionPresenter: pass ResponseModel\n(Ok())
+    deactivate ActivateSubscriptionInteractor
+    activate ActivateSubscriptionPresenter
+
+    ActivateSubscriptionPresenter ->> SubscriptionView: repackage & update ViewModel\n(Ok())
+    activate SubscriptionView
+    deactivate ActivateSubscriptionPresenter
+
+    SubscriptionView -> "Guest/Listener": see the result of the interaction
+    deactivate SubscriptionView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Payment fails
+    PaymentView -> SubscriptionView: redirect
+    activate PaymentView
+    activate SubscriptionView
+    activate "Guest/Listener"
+    deactivate PaymentView
+
+    SubscriptionView -> "Guest/Listener": see the result of the interaction
+    deactivate SubscriptionView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token not found
+    PaymentView -> ActivateSubscriptionController: pass RequestObject
+    activate "Guest/Listener"
+    deactivate PaymentView
+    activate ActivateSubscriptionController
+
+    ActivateSubscriptionController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ActivateSubscriptionController -> LoginView: redirect
+    deactivate ActivateSubscriptionController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+
+    PaymentView -> ActivateSubscriptionController: pass RequestObject
+    activate "Guest/Listener"
+    deactivate PaymentView
+    activate ActivateSubscriptionController
+
+    ActivateSubscriptionController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ActivateSubscriptionController -> ActivateSubscriptionInteractor: repackage & pass RequestModel\n(authToken)
+    deactivate ActivateSubscriptionController
+    activate ActivateSubscriptionInteractor
+
+    ActivateSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ActivateSubscriptionInteractor ->> ActivateSubscriptionPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ActivateSubscriptionInteractor
+
+    ActivateSubscriptionInteractor ->> SubscriptionView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ActivateSubscriptionPresenter
+    activate SubscriptionView
+
+    SubscriptionView -> LoginView: redirect
+    deactivate SubscriptionView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Listener is already Premium
+
+    PaymentView -> ActivateSubscriptionController: pass RequestObject
+    deactivate PaymentView
+    activate ActivateSubscriptionController
+
+    ActivateSubscriptionController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ActivateSubscriptionController -> ActivateSubscriptionInteractor: pass RequestModel\n(authToken)
+    deactivate ActivateSubscriptionController
+    activate ActivateSubscriptionInteractor
+
+    ActivateSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    ActivateSubscriptionInteractor -> ListenerRepository: check if Listener is Premium
+    activate ListenerRepository
+    ActivateSubscriptionInteractor <- ListenerRepository: true
+    deactivate ListenerRepository
+
+    ActivateSubscriptionInteractor -> ActivateSubscriptionPresenter: pass ResponseModel\n(Err(ListenerIsAlreadyPremium))
+    deactivate ActivateSubscriptionInteractor
+    activate ActivateSubscriptionPresenter
+
+    ActivateSubscriptionPresenter ->> SubscriptionView: repackage & update ViewModel\n(Err(ListenerIsAlreadyPremium))
+    activate SubscriptionView
+    deactivate ActivateSubscriptionPresenter
+
+    SubscriptionView -> "Guest/Listener": see the result of the interaction
+    deactivate SubscriptionView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml
