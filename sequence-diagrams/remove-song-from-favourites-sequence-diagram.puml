@@ -3,5 +3,128 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary SongView
+boundary LoginView
+participant AddSongToFavouritesController
+control AddSongToFavouritesInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant SongRepository <<Gateway>>
+participant FavouritesRepository <<Gateway>>
+participant AddSongToFavouritesPresenter <<OutputBoundary>>
 
+"Guest/Listener" -> SongView: click on filled "add to favourites" button
+activate "Guest/Listener"
+activate SongView
+
+SongView -> SongView: update "add to favourites" button to empty
+deactivate "Guest/Listener"
+SongView -> AddSongToFavouritesController: pass RequestObject\n(songId)
+deactivate SongView
+activate AddSongToFavouritesController
+
+alt OK
+    AddSongToFavouritesController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    AddSongToFavouritesController -> AddSongToFavouritesInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate AddSongToFavouritesController
+    activate AddSongToFavouritesInteractor
+
+    AddSongToFavouritesInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    AddSongToFavouritesInteractor <- AuthTokenGenerator: true
+    AddSongToFavouritesInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    AddSongToFavouritesInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    AddSongToFavouritesInteractor -> SongRepository: check if Song with ID exists\n(songId)
+    activate SongRepository
+    return true
+    deactivate SongRepository
+
+    AddSongToFavouritesInteractor ->> FavouritesRepository: unmark Song as Listener's favourite\n(listenerId, songId)
+
+    AddSongToFavouritesInteractor ->> AddSongToFavouritesPresenter: pass ResponseModel\n(Ok())
+    deactivate AddSongToFavouritesInteractor
+    newpage
+
+else Error: Authentication token not found
+    AddSongToFavouritesController -> AuthTokenRepository: get authentication token
+    activate AddSongToFavouritesController
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    AddSongToFavouritesController -> LoginView: redirect
+    deactivate AddSongToFavouritesController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    AddSongToFavouritesController -> AuthTokenRepository: get authentication token
+    activate AddSongToFavouritesController
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    AddSongToFavouritesController -> AddSongToFavouritesInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate AddSongToFavouritesController
+    activate AddSongToFavouritesInteractor
+
+    AddSongToFavouritesInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    AddSongToFavouritesInteractor ->> AddSongToFavouritesPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate AddSongToFavouritesInteractor
+    activate AddSongToFavouritesPresenter
+
+    AddSongToFavouritesPresenter ->> SongView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate AddSongToFavouritesPresenter
+
+    SongView -> LoginView: redirect
+    deactivate SongView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Song not found
+    AddSongToFavouritesController -> AuthTokenRepository: get authentication token
+    activate AddSongToFavouritesController
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    AddSongToFavouritesController -> AddSongToFavouritesInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate AddSongToFavouritesController
+    activate AddSongToFavouritesInteractor
+
+    AddSongToFavouritesInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    AddSongToFavouritesInteractor <- AuthTokenGenerator: true
+    AddSongToFavouritesInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    AddSongToFavouritesInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    AddSongToFavouritesInteractor -> SongRepository: check if Song with ID exists\n(songId)
+    activate SongRepository
+    return false
+    deactivate SongRepository
+
+    AddSongToFavouritesInteractor ->> AddSongToFavouritesPresenter: pass ResponseModel\n(Err(SongNotFound))
+    deactivate AddSongToFavouritesInteractor
+
+end
+    
 @enduml

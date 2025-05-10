@@ -3,5 +3,128 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary PlaylistView
+boundary LoginView
+participant AddPlaylistToFavouritesController
+control AddPlaylistToFavouritesInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant PlaylistRepository <<Gateway>>
+participant FavouritesRepository <<Gateway>>
+participant AddPlaylistToFavouritesPresenter <<OutputBoundary>>
 
+"Guest/Listener" -> PlaylistView: click on empty "add to favourites" button
+activate "Guest/Listener"
+activate PlaylistView
+
+PlaylistView -> PlaylistView: update "add to favourites" button to filled
+deactivate "Guest/Listener"
+PlaylistView -> AddPlaylistToFavouritesController: pass RequestObject\n(playlistId)
+deactivate PlaylistView
+activate AddPlaylistToFavouritesController
+
+alt OK
+    AddPlaylistToFavouritesController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    AddPlaylistToFavouritesController -> AddPlaylistToFavouritesInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate AddPlaylistToFavouritesController
+    activate AddPlaylistToFavouritesInteractor
+
+    AddPlaylistToFavouritesInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    AddPlaylistToFavouritesInteractor <- AuthTokenGenerator: true
+    AddPlaylistToFavouritesInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    AddPlaylistToFavouritesInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    AddPlaylistToFavouritesInteractor -> PlaylistRepository: check if Playlist with ID exists\n(playlistId)
+    activate PlaylistRepository
+    return true
+    deactivate PlaylistRepository
+
+    AddPlaylistToFavouritesInteractor ->> FavouritesRepository: mark Playlist as Listener's favourite\n(listenerId, playlistId)
+
+    AddPlaylistToFavouritesInteractor ->> AddPlaylistToFavouritesPresenter: pass ResponseModel\n(Ok())
+    deactivate AddPlaylistToFavouritesInteractor
+    newpage
+
+else Error: Authentication token not found
+    AddPlaylistToFavouritesController -> AuthTokenRepository: get authentication token
+    activate AddPlaylistToFavouritesController
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    AddPlaylistToFavouritesController -> LoginView: redirect
+    deactivate AddPlaylistToFavouritesController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    AddPlaylistToFavouritesController -> AuthTokenRepository: get authentication token
+    activate AddPlaylistToFavouritesController
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    AddPlaylistToFavouritesController -> AddPlaylistToFavouritesInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate AddPlaylistToFavouritesController
+    activate AddPlaylistToFavouritesInteractor
+
+    AddPlaylistToFavouritesInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    AddPlaylistToFavouritesInteractor ->> AddPlaylistToFavouritesPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate AddPlaylistToFavouritesInteractor
+    activate AddPlaylistToFavouritesPresenter
+
+    AddPlaylistToFavouritesPresenter ->> PlaylistView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate AddPlaylistToFavouritesPresenter
+
+    PlaylistView -> LoginView: redirect
+    deactivate PlaylistView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Playlist not found
+    AddPlaylistToFavouritesController -> AuthTokenRepository: get authentication token
+    activate AddPlaylistToFavouritesController
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    AddPlaylistToFavouritesController -> AddPlaylistToFavouritesInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate AddPlaylistToFavouritesController
+    activate AddPlaylistToFavouritesInteractor
+
+    AddPlaylistToFavouritesInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    AddPlaylistToFavouritesInteractor <- AuthTokenGenerator: true
+    AddPlaylistToFavouritesInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    AddPlaylistToFavouritesInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    AddPlaylistToFavouritesInteractor -> PlaylistRepository: check if Playlist with ID exists\n(playlistId)
+    activate PlaylistRepository
+    return false
+    deactivate PlaylistRepository
+
+    AddPlaylistToFavouritesInteractor ->> AddPlaylistToFavouritesPresenter: pass ResponseModel\n(Err(PlaylistNotFound))
+    deactivate AddPlaylistToFavouritesInteractor
+
+end
+    
 @enduml

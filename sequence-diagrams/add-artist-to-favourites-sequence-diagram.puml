@@ -3,5 +3,128 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary ArtistView
+boundary LoginView
+participant AddArtistToFavouritesController
+control AddArtistToFavouritesInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant ArtistRepository <<Gateway>>
+participant FavouritesRepository <<Gateway>>
+participant AddArtistToFavouritesPresenter <<OutputBoundary>>
 
+"Guest/Listener" -> ArtistView: click on empty "add to favourites" button
+activate "Guest/Listener"
+activate ArtistView
+
+ArtistView -> ArtistView: update "add to favourites" button to filled
+deactivate "Guest/Listener"
+ArtistView -> AddArtistToFavouritesController: pass RequestObject\n(artistId)
+deactivate ArtistView
+activate AddArtistToFavouritesController
+
+alt OK
+    AddArtistToFavouritesController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    AddArtistToFavouritesController -> AddArtistToFavouritesInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate AddArtistToFavouritesController
+    activate AddArtistToFavouritesInteractor
+
+    AddArtistToFavouritesInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    AddArtistToFavouritesInteractor <- AuthTokenGenerator: true
+    AddArtistToFavouritesInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    AddArtistToFavouritesInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    AddArtistToFavouritesInteractor -> ArtistRepository: check if Artist with ID exists\n(artistId)
+    activate ArtistRepository
+    return true
+    deactivate ArtistRepository
+
+    AddArtistToFavouritesInteractor ->> FavouritesRepository: mark Artist as Listener's favourite\n(listenerId, artistId)
+
+    AddArtistToFavouritesInteractor ->> AddArtistToFavouritesPresenter: pass ResponseModel\n(Ok())
+    deactivate AddArtistToFavouritesInteractor
+    newpage
+
+else Error: Authentication token not found
+    AddArtistToFavouritesController -> AuthTokenRepository: get authentication token
+    activate AddArtistToFavouritesController
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    AddArtistToFavouritesController -> LoginView: redirect
+    deactivate AddArtistToFavouritesController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    AddArtistToFavouritesController -> AuthTokenRepository: get authentication token
+    activate AddArtistToFavouritesController
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    AddArtistToFavouritesController -> AddArtistToFavouritesInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate AddArtistToFavouritesController
+    activate AddArtistToFavouritesInteractor
+
+    AddArtistToFavouritesInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    AddArtistToFavouritesInteractor ->> AddArtistToFavouritesPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate AddArtistToFavouritesInteractor
+    activate AddArtistToFavouritesPresenter
+
+    AddArtistToFavouritesPresenter ->> ArtistView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate AddArtistToFavouritesPresenter
+
+    ArtistView -> LoginView: redirect
+    deactivate ArtistView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Artist not found
+    AddArtistToFavouritesController -> AuthTokenRepository: get authentication token
+    activate AddArtistToFavouritesController
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    AddArtistToFavouritesController -> AddArtistToFavouritesInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate AddArtistToFavouritesController
+    activate AddArtistToFavouritesInteractor
+
+    AddArtistToFavouritesInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    AddArtistToFavouritesInteractor <- AuthTokenGenerator: true
+    AddArtistToFavouritesInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    AddArtistToFavouritesInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    AddArtistToFavouritesInteractor -> ArtistRepository: check if Artist with ID exists\n(artistId)
+    activate ArtistRepository
+    return false
+    deactivate ArtistRepository
+
+    AddArtistToFavouritesInteractor ->> AddArtistToFavouritesPresenter: pass ResponseModel\n(Err(ArtistNotFound))
+    deactivate AddArtistToFavouritesInteractor
+
+end
+    
 @enduml
