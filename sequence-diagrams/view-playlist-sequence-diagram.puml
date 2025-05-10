@@ -3,8 +3,7 @@
 hide footbox
 skinparam BackgroundColor transparent
 
-actor Listener
-actor Guest
+actor "Guest/Listener"
 boundary PlaylistLinkView
 boundary PlaylistView
 boundary LoginView
@@ -13,11 +12,12 @@ control ViewPlaylistInteractor <<InputBoundary>>
 participant AuthTokenRepository <<Gateway>>
 participant AuthTokenGenerator <<Gateway>>
 participant PlaylistRepository <<Gateway>>
+entity Playlist <<Entity>>
 participant ViewPlaylistPresenter <<OutputBoundary>>
 
-Listener -> PlaylistLinkView: click on navigatable element
+"Guest/Listener" -> PlaylistLinkView: click on navigatable element
+activate "Guest/Listener"
 activate PlaylistLinkView
-activate Listener
 
 PlaylistLinkView -> PlaylistView: redirect
 deactivate PlaylistLinkView
@@ -41,55 +41,61 @@ alt OK
     return true
     deactivate AuthTokenGenerator
 
-    ViewPlaylistInteractor -> PlaylistRepository: get Playlist
+    par
+    ViewPlaylistInteractor -> PlaylistRepository: get Playlist by ID\n(playlistId)
     activate PlaylistRepository
     return Some(playlist)
+    activate Playlist
     deactivate PlaylistRepository
 
-    alt playlist.metadata.isPublic == false
-        ViewPlaylistInteractor -> AuthTokenGenerator: get listenerId from authentication token
-        activate AuthTokenGenerator
-        return listenerId
-        deactivate AuthTokenGenerator
+    else
+    ViewPlaylistInteractor -> AuthTokenGenerator: get Listener ID from authentication token
+    activate AuthTokenGenerator
+    return listenerId
+    deactivate AuthTokenGenerator
 
-        alt listenerId == playlist.metadata.ownerId
-        end
     end
+
+    ViewPlaylistInteractor -> Playlist: check if Playlist is visible to Listener\n(listenerId)
+    return true
 
     ViewPlaylistInteractor ->> ViewPlaylistPresenter: pass ResponseModel\n(Ok(playlist))
     deactivate ViewPlaylistInteractor
+    deactivate Playlist
     activate ViewPlaylistPresenter
 
     ViewPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Ok())
     deactivate ViewPlaylistPresenter
 
-    PlaylistView -> Listener: see the result of the interaction
-    deactivate Listener
+    PlaylistView -> "Guest/Listener": see the result of the interaction
+    deactivate PlaylistView
+    deactivate "Guest/Listener"
+    
     newpage
 
 else Error: Authentication token not found
-    activate ViewPlaylistController
-
     ViewPlaylistController -> AuthTokenRepository: get authentication token
+    activate ViewPlaylistController
+    activate "Guest/Listener"
+    activate PlaylistView
     activate AuthTokenRepository
     return None
     deactivate AuthTokenRepository
 
-    deactivate Listener
-    activate Guest
-
     ViewPlaylistController -> LoginView: redirect
+    deactivate PlaylistView
     deactivate ViewPlaylistController
     activate LoginView
 
-    LoginView -> Guest: see the result of the interaction
+    LoginView -> "Guest/Listener": see the result of the interaction
     deactivate LoginView
-    deactivate Guest
-
+    deactivate "Guest/Listener"
+    
 else Error: Authentication token invalid
-    activate ViewPlaylistController
-
     ViewPlaylistController -> AuthTokenRepository: get authentication token
+    activate ViewPlaylistController
+    activate "Guest/Listener"
+    activate PlaylistView
     activate AuthTokenRepository
     return Some(authToken)
     deactivate AuthTokenRepository
@@ -103,9 +109,6 @@ else Error: Authentication token invalid
     return false
     deactivate AuthTokenGenerator
 
-    deactivate Listener
-    activate Guest
-
     ViewPlaylistInteractor ->> ViewPlaylistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
     deactivate ViewPlaylistInteractor
     activate ViewPlaylistPresenter
@@ -117,14 +120,16 @@ else Error: Authentication token invalid
     deactivate PlaylistView
     activate LoginView
 
-    LoginView -> Guest: see the result of the interaction
+    LoginView -> "Guest/Listener": see the result of the interaction
     deactivate LoginView
-    deactivate Guest
+    deactivate "Guest/Listener"
     newpage
 
 else Error: Playlist not visible to Listener
     ViewPlaylistController -> AuthTokenRepository: get authentication token
     activate AuthTokenRepository
+    activate PlaylistView
+    activate "Guest/Listener"
     return Some(authToken)
     deactivate AuthTokenRepository
 
@@ -137,31 +142,36 @@ else Error: Playlist not visible to Listener
     return true
     deactivate AuthTokenGenerator
 
-    ViewPlaylistInteractor -> PlaylistRepository: get Playlist
+    par
+    ViewPlaylistInteractor -> PlaylistRepository: get Playlist by ID\n(playlistId)
     activate PlaylistRepository
     return Some(playlist)
+    activate Playlist
     deactivate PlaylistRepository
 
-    alt playlist.metadata.isPublic == false
-        ViewPlaylistInteractor -> AuthTokenGenerator: get listenerId from authentication token
-        activate AuthTokenGenerator
-        return listenerId
-        deactivate AuthTokenGenerator
+    else
+    ViewPlaylistInteractor -> AuthTokenGenerator: get Listener ID from authentication token
+    activate AuthTokenGenerator
+    return listenerId
+    deactivate AuthTokenGenerator
 
-        alt listenerId != playlist.metadata.ownerId
-        end
     end
+
+    ViewPlaylistInteractor -> Playlist: check if Playlist is visible to Listener\n(listenerId)
+    return false
 
     ViewPlaylistInteractor ->> ViewPlaylistPresenter: pass ResponseModel\n(Err(PlaylistNotVisible))
     deactivate ViewPlaylistInteractor
+    deactivate Playlist
     activate ViewPlaylistPresenter
 
-    ViewPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(OErr(PlaylistNotVisible))
+    ViewPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Err(PlaylistNotVisible))
     deactivate ViewPlaylistPresenter
 
-    PlaylistView -> Listener: see the result of the interaction
-    deactivate Listener
-    
+    PlaylistView -> "Guest/Listener": see the result of the interaction
+    deactivate PlaylistView
+    deactivate "Guest/Listener"
+
 end
 
 @enduml

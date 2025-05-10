@@ -3,8 +3,7 @@
 hide footbox
 skinparam BackgroundColor transparent
 
-actor Listener
-actor Guest
+actor "Guest/Listener"
 boundary SongLinkView
 boundary SongView
 boundary LoginView
@@ -15,9 +14,9 @@ participant AuthTokenGenerator <<Gateway>>
 participant SongRepository <<Gateway>>
 participant ViewSongPresenter <<OutputBoundary>>
 
-Listener -> SongLinkView: click on navigatable element
+"Guest/Listener" -> SongLinkView: click on navigatable element
+activate "Guest/Listener"
 activate SongLinkView
-activate Listener
 
 SongLinkView -> SongView: redirect
 deactivate SongLinkView
@@ -41,7 +40,7 @@ alt OK
     return true
     deactivate AuthTokenGenerator
 
-    ViewSongInteractor -> SongRepository: get Song
+    ViewSongInteractor -> SongRepository: get Song by ID\n(songId)
     activate SongRepository
     return Some(song)
     deactivate SongRepository
@@ -53,33 +52,35 @@ alt OK
     ViewSongPresenter ->> SongView: repackage & update ViewModel\n(Ok())
     deactivate ViewSongPresenter
 
-    SongView -> Listener: see the result of the interaction
-    deactivate Listener
+    SongView -> "Guest/Listener": see the result of the interaction
+    deactivate SongView
+    deactivate "Guest/Listener"
+    
     newpage
 
 else Error: Authentication token not found
-    activate ViewSongController
-
     ViewSongController -> AuthTokenRepository: get authentication token
+    activate ViewSongController
+    activate "Guest/Listener"
+    activate SongView
     activate AuthTokenRepository
     return None
     deactivate AuthTokenRepository
 
-    deactivate Listener
-    activate Guest
-
     ViewSongController -> LoginView: redirect
+    deactivate SongView
     deactivate ViewSongController
     activate LoginView
 
-    LoginView -> Guest: see the result of the interaction
+    LoginView -> "Guest/Listener": see the result of the interaction
     deactivate LoginView
-    deactivate Guest
-
+    deactivate "Guest/Listener"
+    
 else Error: Authentication token invalid
-    activate ViewSongController
-
     ViewSongController -> AuthTokenRepository: get authentication token
+    activate ViewSongController
+    activate "Guest/Listener"
+    activate SongView
     activate AuthTokenRepository
     return Some(authToken)
     deactivate AuthTokenRepository
@@ -93,9 +94,6 @@ else Error: Authentication token invalid
     return false
     deactivate AuthTokenGenerator
 
-    deactivate Listener
-    activate Guest
-
     ViewSongInteractor ->> ViewSongPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
     deactivate ViewSongInteractor
     activate ViewSongPresenter
@@ -107,9 +105,9 @@ else Error: Authentication token invalid
     deactivate SongView
     activate LoginView
 
-    LoginView -> Guest: see the result of the interaction
+    LoginView -> "Guest/Listener": see the result of the interaction
     deactivate LoginView
-    deactivate Guest
+    deactivate "Guest/Listener"
 
 end
 

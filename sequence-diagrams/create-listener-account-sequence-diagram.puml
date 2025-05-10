@@ -58,13 +58,11 @@ alt OK
     end
 
     CreateListenerInteractor -> Listener: instantiate with listenerId, encodedCredentials,\nother attributes default\n(listenerId, encodedCredentials)
-    activate Listener
     return listener
 
     CreateListenerInteractor -> ListenerRepository: save Listener\n(listener)
     deactivate ListenerRepository
-    deactivate Listener
-
+    
     CreateListenerInteractor ->> CreateListenerAccountPresenter: pass ResponseModel\n(Ok())
     deactivate CreateListenerInteractor
     activate CreateListenerAccountPresenter
@@ -73,14 +71,18 @@ alt OK
     deactivate CreateListenerAccountPresenter
 
     CreateListenerAccountView ->> LoginView: redirect
+    deactivate CreateListenerAccountView
     activate LoginView
 
     LoginView -> Guest: see the result of the interaction
     deactivate LoginView
+    deactivate Guest
     newpage
 
 else Error: Credentials are in incorrect format
     CreateListenerInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate CreateListenerAccountView
+    activate Guest
     activate CreateListenerInteractor
     activate UserCredentialsVerifier
     return false
@@ -94,9 +96,13 @@ else Error: Credentials are in incorrect format
     deactivate CreateListenerAccountPresenter
 
     CreateListenerAccountView -> Guest: see the result of the interaction
+    deactivate CreateListenerAccountView
+    deactivate Guest
 
 else Error: Username already exists
     CreateListenerInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate CreateListenerAccountView
+    activate Guest
     activate CreateListenerInteractor
     activate UserCredentialsVerifier
     return true
@@ -114,10 +120,9 @@ else Error: Username already exists
     deactivate CreateListenerAccountPresenter
 
     CreateListenerAccountView -> Guest: see the result of the interaction
+    deactivate CreateListenerAccountView
+    deactivate Guest
 
 end
-
-deactivate Guest
-deactivate CreateListenerAccountView
 
 @enduml
