@@ -1,0 +1,133 @@
+@startuml
+
+hide footbox
+skinparam BackgroundColor transparent
+
+actor "Guest/Listener"
+boundary PlaylistView
+boundary LoginView
+participant SharePlaylistController
+control SharePlaylistInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant PlaylistRepository <<Gateway>>
+participant UriGenerator <<Gateway>>
+participant SharePlaylistPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> PlaylistView: click on share button
+activate "Guest/Listener"
+activate PlaylistView
+
+PlaylistView -> SharePlaylistController: pass RequestObject\n(playlistId)
+deactivate PlaylistView
+activate SharePlaylistController
+
+alt OK
+    SharePlaylistController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    SharePlaylistController -> SharePlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate SharePlaylistController
+    activate SharePlaylistInteractor
+
+    SharePlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    SharePlaylistInteractor -> PlaylistRepository: check if Playlist with ID exists\n(playlistId)
+    activate PlaylistRepository
+    return true
+    deactivate PlaylistRepository
+
+    SharePlaylistInteractor ->> UriGenerator: generate Playlist URI by ID\n(playlistId)
+    activate UriGenerator
+    return playlistUri
+    deactivate UriGenerator
+
+    SharePlaylistInteractor ->> SharePlaylistPresenter: pass ResponseModel\n(Ok(playlistUri))
+    deactivate SharePlaylistInteractor
+    activate SharePlaylistInteractor
+
+    SharePlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Ok(playlistUri))
+    deactivate SharePlaylistPresenter
+    activate PlaylistView
+
+    newpage
+
+else Error: Authentication token not found
+    SharePlaylistController -> AuthTokenRepository: get authentication token
+    activate SharePlaylistController
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    SharePlaylistController -> LoginView: redirect
+    deactivate SharePlaylistController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    SharePlaylistController -> AuthTokenRepository: get authentication token
+    activate SharePlaylistController
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    SharePlaylistController -> SharePlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate SharePlaylistController
+    activate SharePlaylistInteractor
+
+    SharePlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    SharePlaylistInteractor ->> SharePlaylistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate SharePlaylistInteractor
+    activate SharePlaylistPresenter
+
+    SharePlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate SharePlaylistPresenter
+
+    PlaylistView -> LoginView: redirect
+    deactivate PlaylistView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Playlist not found
+    SharePlaylistController -> AuthTokenRepository: get authentication token
+    activate SharePlaylistController
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    SharePlaylistController -> SharePlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate SharePlaylistController
+    activate SharePlaylistInteractor
+
+    SharePlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    SharePlaylistInteractor -> PlaylistRepository: check if Playlist with ID exists\n(playlistId)
+    activate PlaylistRepository
+    return false
+    deactivate PlaylistRepository
+
+    SharePlaylistInteractor ->> SharePlaylistPresenter: pass ResponseModel\n(Err(PlaylistNotFound))
+    deactivate SharePlaylistInteractor
+
+end
+    
+@enduml

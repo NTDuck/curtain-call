@@ -1,0 +1,133 @@
+@startuml
+
+hide footbox
+skinparam BackgroundColor transparent
+
+actor "Guest/Listener"
+boundary SongView
+boundary LoginView
+participant ShareSongController
+control ShareSongInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant SongRepository <<Gateway>>
+participant UriGenerator <<Gateway>>
+participant ShareSongPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> SongView: click on share button
+activate "Guest/Listener"
+activate SongView
+
+SongView -> ShareSongController: pass RequestObject\n(songId)
+deactivate SongView
+activate ShareSongController
+
+alt OK
+    ShareSongController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ShareSongController -> ShareSongInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ShareSongController
+    activate ShareSongInteractor
+
+    ShareSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    ShareSongInteractor -> SongRepository: check if Song with ID exists\n(songId)
+    activate SongRepository
+    return true
+    deactivate SongRepository
+
+    ShareSongInteractor ->> UriGenerator: generate Song URI by ID\n(songId)
+    activate UriGenerator
+    return songUri
+    deactivate UriGenerator
+
+    ShareSongInteractor ->> ShareSongPresenter: pass ResponseModel\n(Ok(songUri))
+    deactivate ShareSongInteractor
+    activate ShareSongInteractor
+
+    ShareSongPresenter ->> SongView: repackage & update ViewModel\n(Ok(songUri))
+    deactivate ShareSongPresenter
+    activate SongView
+
+    newpage
+
+else Error: Authentication token not found
+    ShareSongController -> AuthTokenRepository: get authentication token
+    activate ShareSongController
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ShareSongController -> LoginView: redirect
+    deactivate ShareSongController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    ShareSongController -> AuthTokenRepository: get authentication token
+    activate ShareSongController
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ShareSongController -> ShareSongInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ShareSongController
+    activate ShareSongInteractor
+
+    ShareSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ShareSongInteractor ->> ShareSongPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ShareSongInteractor
+    activate ShareSongPresenter
+
+    ShareSongPresenter ->> SongView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ShareSongPresenter
+
+    SongView -> LoginView: redirect
+    deactivate SongView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Song not found
+    ShareSongController -> AuthTokenRepository: get authentication token
+    activate ShareSongController
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ShareSongController -> ShareSongInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ShareSongController
+    activate ShareSongInteractor
+
+    ShareSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    ShareSongInteractor -> SongRepository: check if Song with ID exists\n(songId)
+    activate SongRepository
+    return false
+    deactivate SongRepository
+
+    ShareSongInteractor ->> ShareSongPresenter: pass ResponseModel\n(Err(SongNotFound))
+    deactivate ShareSongInteractor
+
+end
+    
+@enduml

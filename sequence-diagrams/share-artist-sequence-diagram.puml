@@ -1,0 +1,133 @@
+@startuml
+
+hide footbox
+skinparam BackgroundColor transparent
+
+actor "Guest/Listener"
+boundary ArtistView
+boundary LoginView
+participant ShareArtistController
+control ShareArtistInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant ArtistRepository <<Gateway>>
+participant UriGenerator <<Gateway>>
+participant ShareArtistPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> ArtistView: click on share button
+activate "Guest/Listener"
+activate ArtistView
+
+ArtistView -> ShareArtistController: pass RequestObject\n(artistId)
+deactivate ArtistView
+activate ShareArtistController
+
+alt OK
+    ShareArtistController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ShareArtistController -> ShareArtistInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate ShareArtistController
+    activate ShareArtistInteractor
+
+    ShareArtistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    ShareArtistInteractor -> ArtistRepository: check if Artist with ID exists\n(artistId)
+    activate ArtistRepository
+    return true
+    deactivate ArtistRepository
+
+    ShareArtistInteractor ->> UriGenerator: generate Artist URI by ID\n(artistId)
+    activate UriGenerator
+    return artistUri
+    deactivate UriGenerator
+
+    ShareArtistInteractor ->> ShareArtistPresenter: pass ResponseModel\n(Ok(artistUri))
+    deactivate ShareArtistInteractor
+    activate ShareArtistInteractor
+
+    ShareArtistPresenter ->> ArtistView: repackage & update ViewModel\n(Ok(artistUri))
+    deactivate ShareArtistPresenter
+    activate ArtistView
+
+    newpage
+
+else Error: Authentication token not found
+    ShareArtistController -> AuthTokenRepository: get authentication token
+    activate ShareArtistController
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ShareArtistController -> LoginView: redirect
+    deactivate ShareArtistController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    ShareArtistController -> AuthTokenRepository: get authentication token
+    activate ShareArtistController
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ShareArtistController -> ShareArtistInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate ShareArtistController
+    activate ShareArtistInteractor
+
+    ShareArtistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ShareArtistInteractor ->> ShareArtistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ShareArtistInteractor
+    activate ShareArtistPresenter
+
+    ShareArtistPresenter ->> ArtistView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ShareArtistPresenter
+
+    ArtistView -> LoginView: redirect
+    deactivate ArtistView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Artist not found
+    ShareArtistController -> AuthTokenRepository: get authentication token
+    activate ShareArtistController
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ShareArtistController -> ShareArtistInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate ShareArtistController
+    activate ShareArtistInteractor
+
+    ShareArtistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    ShareArtistInteractor -> ArtistRepository: check if Artist with ID exists\n(artistId)
+    activate ArtistRepository
+    return false
+    deactivate ArtistRepository
+
+    ShareArtistInteractor ->> ShareArtistPresenter: pass ResponseModel\n(Err(ArtistNotFound))
+    deactivate ShareArtistInteractor
+
+end
+    
+@enduml
