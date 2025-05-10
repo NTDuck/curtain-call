@@ -1,0 +1,7 @@
+@startuml
+
+hide footbox
+skinparam BackgroundColor transparent
+
+
+@enduml
