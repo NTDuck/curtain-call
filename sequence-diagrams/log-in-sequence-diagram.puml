@@ -32,10 +32,10 @@ activate LoginController
 
 LoginController ->> LoginInteractor: repackage & pass RequestModel\n(credentials)
 deactivate LoginController
-activate LoginInteractor
     
 alt OK
     LoginInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate LoginInteractor
     activate UserCredentialsVerifier
     return true
     deactivate UserCredentialsVerifier
@@ -61,8 +61,10 @@ alt OK
 
     LoginPresenter ->> AuthTokenRepository: store authentication token\n(authToken)
 
-    LoginPresenter ->> ListenerHomeView: update the ViewModel\n(Ok())
+    LoginPresenter ->> LoginView: repackage & update ViewModel\n(Ok())
     deactivate LoginPresenter
+
+    LoginView ->> ListenerHomeView: redirect
     activate ListenerHomeView
 
     ListenerHomeView -> Listener: see the result of the interaction
@@ -72,8 +74,9 @@ alt OK
     deactivate ListenerHomeView
     newpage
 
-else Error: Listener credentials in incorrect format
+else Error: Credentials in incorrect format
     LoginInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate LoginInteractor
     activate UserCredentialsVerifier
     return false
     deactivate UserCredentialsVerifier
@@ -82,13 +85,14 @@ else Error: Listener credentials in incorrect format
     deactivate LoginInteractor
     activate LoginPresenter
 
-    LoginPresenter ->> LoginView: update the ViewModel\n(Err(CredentialsMalformed))
+    LoginPresenter ->> LoginView: update ViewModel\n(Err(CredentialsMalformed))
     deactivate LoginPresenter
     
     LoginView -> Guest: see the result of the interaction
 
 else Error: Listener does not exist
     LoginInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate LoginInteractor
     activate UserCredentialsVerifier
     return true
     deactivate UserCredentialsVerifier
@@ -102,13 +106,14 @@ else Error: Listener does not exist
     deactivate LoginInteractor
     activate LoginPresenter
 
-    LoginPresenter ->> LoginView: update the ViewModel\n(Err(CredentialsInvalid))
+    LoginPresenter ->> LoginView: repackage & update ViewModel\n(Err(CredentialsInvalid))
     deactivate LoginPresenter
 
     LoginView -> Guest: see the result of the interaction
 
 else Error: Password does not match
     LoginInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate LoginInteractor
     activate UserCredentialsVerifier
     return true
     deactivate UserCredentialsVerifier
@@ -127,7 +132,7 @@ else Error: Password does not match
     deactivate LoginInteractor
     activate LoginPresenter
 
-    LoginPresenter ->> LoginView: repackage & update the ViewModel\n(Err(CredentialsInvalid))
+    LoginPresenter ->> LoginView: repackage & update ViewModel\n(Err(CredentialsInvalid))
     deactivate LoginPresenter
 
     LoginView -> Guest: see the result of the interaction

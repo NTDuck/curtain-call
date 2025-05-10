@@ -6,11 +6,14 @@ skinparam BackgroundColor transparent
 actor Guest
 boundary GuestHomeView
 boundary CreateListenerAccountView
+boundary LoginView
 participant CreateListenerAccountController
 control CreateListenerInteractor <<InputBoundary>>
 participant UserCredentialsVerifier <<Gateway>>
 participant ListenerRepository <<Gateway>>
 participant UuidGenerator <<Gateway>>
+participant PasswordEncoder <<Gateway>>
+entity Listener <<Entity>>
 participant CreateListenerAccountPresenter <<OutputBoundary>>
 
 Guest -> GuestHomeView: click on create account button
@@ -28,14 +31,89 @@ activate CreateListenerAccountController
 
 CreateListenerAccountController ->> CreateListenerInteractor: repackage & pass RequestModel\n(credentials, metadata)
 deactivate CreateListenerAccountController
-activate CreateListenerInteractor
 
 alt OK
     CreateListenerInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate CreateListenerInteractor
     activate UserCredentialsVerifier
     return true
     deactivate UserCredentialsVerifier
 
-    CreateListenerInteractor -> ListenerRepository: check if Listener with username already exists
+    CreateListenerInteractor -> ListenerRepository: check if Listener with username already exists\n(credentials.username)
+    activate ListenerRepository
+    return false
+    
+    par
+    CreateListenerInteractor -> PasswordEncoder: encode credentials\n(credentials)
+    activate PasswordEncoder
+    return encodedCredentials
+    deactivate PasswordEncoder
+
+    else
+    CreateListenerInteractor -> UuidGenerator: generate Listener ID
+    activate UuidGenerator
+    return listenerId
+    deactivate UuidGenerator
+
+    end
+
+    CreateListenerInteractor -> Listener: instantiate with listenerId, encodedCredentials,\nother attributes default\n(listenerId, encodedCredentials)
+    activate Listener
+    return listener
+
+    CreateListenerInteractor -> ListenerRepository: save Listener\n(listener)
+    deactivate ListenerRepository
+    deactivate Listener
+
+    CreateListenerInteractor ->> CreateListenerAccountPresenter: pass ResponseModel\n(Ok())
+    deactivate CreateListenerInteractor
+    activate CreateListenerAccountPresenter
+
+    CreateListenerAccountPresenter ->> CreateListenerAccountView: repackage & update ViewModel(Ok())
+    deactivate CreateListenerAccountPresenter
+
+    CreateListenerAccountView ->> LoginView: redirect
+    activate LoginView
+
+    LoginView -> Guest: see the result of the interaction
+    newpage
+
+else Error: Credentials are in incorrect format
+    CreateListenerInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate CreateListenerInteractor
+    activate UserCredentialsVerifier
+    return false
+    deactivate UserCredentialsVerifier
+
+    CreateListenerInteractor ->> CreateListenerAccountPresenter: pass ResponseModel\n(Err(CredentialsMalformed))
+    deactivate CreateListenerInteractor
+    activate CreateListenerAccountPresenter
+
+    CreateListenerAccountPresenter ->> CreateListenerAccountView: repackage & update ViewModel(Err(CredentialsMalformed))
+    deactivate CreateListenerAccountPresenter
+
+    CreateListenerAccountView -> Guest: see the result of the interaction
+
+else Error: Username already exists
+    CreateListenerInteractor -> UserCredentialsVerifier: check if credentials are in correct format\n(credentials)
+    activate CreateListenerInteractor
+    activate UserCredentialsVerifier
+    return true
+    deactivate UserCredentialsVerifier
+
+    CreateListenerInteractor -> ListenerRepository: check if Listener with username already exists\n(credentials.username)
+    activate ListenerRepository
+    return true
+
+    CreateListenerInteractor ->> CreateListenerAccountPresenter: pass ResponseModel\n(Err(UserAlreadyExists))
+    deactivate CreateListenerInteractor
+    activate CreateListenerAccountPresenter
+
+    CreateListenerAccountPresenter ->> CreateListenerAccountView: repackage & update ViewModel(Err(UserAlreadyExists))
+    deactivate CreateListenerAccountPresenter
+
+    CreateListenerAccountView -> Guest: see the result of the interaction
+
+end
 
 @enduml
