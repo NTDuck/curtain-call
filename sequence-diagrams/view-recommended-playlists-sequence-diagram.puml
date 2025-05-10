@@ -7,12 +7,12 @@ actor "Guest/Listener"
 boundary RecommendedPlaylistsLinkView
 boundary RecommendedPlaylistsView
 boundary LoginView
-participant ViewRecommendedPlaylistController
-control ViewRecommendedPlaylistInteractor <<InputBoundary>>
+participant ViewRecommendedPlaylistsController
+control ViewRecommendedPlaylistsInteractor <<InputBoundary>>
 participant AuthTokenRepository <<Gateway>>
 participant AuthTokenGenerator <<Gateway>>
 participant Recommendator <<Gateway>>
-participant ViewRecommendedPlaylistPresenter <<OutputBoundary>>
+participant ViewRecommendedPlaylistsPresenter <<OutputBoundary>>
 
 "Guest/Listener" -> RecommendedPlaylistsLinkView: click on navigatable element
 activate "Guest/Listener"
@@ -22,38 +22,38 @@ RecommendedPlaylistsLinkView -> RecommendedPlaylistsView: redirect
 deactivate RecommendedPlaylistsLinkView
 activate RecommendedPlaylistsView
 
-RecommendedPlaylistsView -> ViewRecommendedPlaylistController: pass RequestObject\n(paginationRequest)
-activate ViewRecommendedPlaylistController
+RecommendedPlaylistsView -> ViewRecommendedPlaylistsController: pass RequestObject\n(paginationRequest)
+activate ViewRecommendedPlaylistsController
 
 alt OK
-    ViewRecommendedPlaylistController -> AuthTokenRepository: get authentication token
+    ViewRecommendedPlaylistsController -> AuthTokenRepository: get authentication token
     activate AuthTokenRepository
     return Some(authToken)
     deactivate AuthTokenRepository
 
-    ViewRecommendedPlaylistController -> ViewRecommendedPlaylistInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
-    deactivate ViewRecommendedPlaylistController
-    activate ViewRecommendedPlaylistInteractor
+    ViewRecommendedPlaylistsController -> ViewRecommendedPlaylistsInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
+    deactivate ViewRecommendedPlaylistsController
+    activate ViewRecommendedPlaylistsInteractor
 
-    ViewRecommendedPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    ViewRecommendedPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
-    ViewRecommendedPlaylistInteractor <- AuthTokenGenerator: true
+    ViewRecommendedPlaylistsInteractor <- AuthTokenGenerator: true
 
-    ViewRecommendedPlaylistInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
-    ViewRecommendedPlaylistInteractor <- AuthTokenGenerator: listenerId
+    ViewRecommendedPlaylistsInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    ViewRecommendedPlaylistsInteractor <- AuthTokenGenerator: listenerId
     deactivate AuthTokenGenerator
 
-    ViewRecommendedPlaylistInteractor -> Recommendator: show recommended Playlists for Listener\n(listenerId, paginationRequest)
+    ViewRecommendedPlaylistsInteractor -> Recommendator: show recommended Playlists for Listener\n(listenerId, paginationRequest)
     activate Recommendator
     return playlists
     deactivate Recommendator
 
-    ViewRecommendedPlaylistInteractor ->> ViewRecommendedPlaylistPresenter: pass ResponseModel\n(playlists)
-    deactivate ViewRecommendedPlaylistInteractor
-    activate ViewRecommendedPlaylistPresenter
+    ViewRecommendedPlaylistsInteractor ->> ViewRecommendedPlaylistsPresenter: pass ResponseModel\n(playlists)
+    deactivate ViewRecommendedPlaylistsInteractor
+    activate ViewRecommendedPlaylistsPresenter
 
-    ViewRecommendedPlaylistPresenter ->> RecommendedPlaylistsView: repackage & upate ViewModel\n(playlists)
-    deactivate ViewRecommendedPlaylistPresenter
+    ViewRecommendedPlaylistsPresenter ->> RecommendedPlaylistsView: repackage & upate ViewModel\n(playlists)
+    deactivate ViewRecommendedPlaylistsPresenter
 
     RecommendedPlaylistsView -> "Guest/Listener": see the result of the interaction
     deactivate RecommendedPlaylistsView
@@ -62,17 +62,17 @@ alt OK
     newpage
 
 else Error: Authentication token not found
-    ViewRecommendedPlaylistController -> AuthTokenRepository: get authentication token
-    activate ViewRecommendedPlaylistController
+    ViewRecommendedPlaylistsController -> AuthTokenRepository: get authentication token
+    activate ViewRecommendedPlaylistsController
     activate "Guest/Listener"
     activate RecommendedPlaylistsView
     activate AuthTokenRepository
     return None
     deactivate AuthTokenRepository
 
-    ViewRecommendedPlaylistController -> LoginView: redirect
+    ViewRecommendedPlaylistsController -> LoginView: redirect
     deactivate RecommendedPlaylistsView
-    deactivate ViewRecommendedPlaylistController
+    deactivate ViewRecommendedPlaylistsController
     activate LoginView
 
     LoginView -> "Guest/Listener": see the result of the interaction
@@ -80,29 +80,29 @@ else Error: Authentication token not found
     deactivate "Guest/Listener"
 
 else Error: Authnetication token invalid
-    ViewRecommendedPlaylistController -> AuthTokenRepository: get authentication token
-    activate ViewRecommendedPlaylistController
+    ViewRecommendedPlaylistsController -> AuthTokenRepository: get authentication token
+    activate ViewRecommendedPlaylistsController
     activate "Guest/Listener"
     activate RecommendedPlaylistsView
     activate AuthTokenRepository
     return Some(authToken)
     deactivate AuthTokenRepository
 
-    ViewRecommendedPlaylistController -> ViewRecommendedPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
-    deactivate ViewRecommendedPlaylistController
-    activate ViewRecommendedPlaylistInteractor
+    ViewRecommendedPlaylistsController -> ViewRecommendedPlaylistsInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate ViewRecommendedPlaylistsController
+    activate ViewRecommendedPlaylistsInteractor
 
-    ViewRecommendedPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    ViewRecommendedPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
     return false
     deactivate AuthTokenGenerator
 
-    ViewRecommendedPlaylistInteractor ->> ViewRecommendedPlaylistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
-    deactivate ViewRecommendedPlaylistInteractor
-    activate ViewRecommendedPlaylistPresenter
+    ViewRecommendedPlaylistsInteractor ->> ViewRecommendedPlaylistsPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewRecommendedPlaylistsInteractor
+    activate ViewRecommendedPlaylistsPresenter
 
-    ViewRecommendedPlaylistPresenter ->> RecommendedPlaylistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
-    deactivate ViewRecommendedPlaylistPresenter
+    ViewRecommendedPlaylistsPresenter ->> RecommendedPlaylistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewRecommendedPlaylistsPresenter
 
     RecommendedPlaylistsView -> LoginView: redirect
     deactivate RecommendedPlaylistsView

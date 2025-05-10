@@ -3,5 +3,121 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary FavouriteSongsLinkView
+boundary FavouriteSongsView
+boundary LoginView
+participant ViewFavouriteSongsController
+control ViewFavouriteSongsInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant FavouritesRepository <<Gateway>>
+participant SongRepository <<Gateway>>
+participant ViewFavouriteSongsPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> FavouriteSongsLinkView: click on navigatable element
+activate "Guest/Listener"
+activate FavouriteSongsLinkView
+
+FavouriteSongsLinkView -> FavouriteSongsView: redirect
+deactivate FavouriteSongsLinkView
+activate FavouriteSongsView
+
+FavouriteSongsView -> ViewFavouriteSongsController: pass RequestObject\n(paginationRequest)
+activate ViewFavouriteSongsController
+
+alt OK
+    ViewFavouriteSongsController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewFavouriteSongsController -> ViewFavouriteSongsInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
+    deactivate ViewFavouriteSongsController
+    activate ViewFavouriteSongsInteractor
+
+    ViewFavouriteSongsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewFavouriteSongsInteractor <- AuthTokenGenerator: true
+
+    ViewFavouriteSongsInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    ViewFavouriteSongsInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    ViewFavouriteSongsInteractor -> FavouritesRepository: show favourite Song IDs of Listener\n(listenerId, paginationRequest)
+    activate FavouritesRepository
+    return songIds
+    deactivate FavouritesRepository
+
+    ViewFavouriteSongsInteractor -> SongRepository: get favourite Songs of Listener\n(songIds)
+    activate SongRepository
+    return songs
+    deactivate SongRepository
+
+    ViewFavouriteSongsInteractor ->> ViewFavouriteSongsPresenter: pass ResponseModel\n(songs)
+    deactivate ViewFavouriteSongsInteractor
+    activate ViewFavouriteSongsPresenter
+
+    ViewFavouriteSongsPresenter ->> FavouriteSongsView: repackage & upate ViewModel\n(songs)
+    deactivate ViewFavouriteSongsPresenter
+
+    FavouriteSongsView -> "Guest/Listener": see the result of the interaction
+    deactivate FavouriteSongsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    ViewFavouriteSongsController -> AuthTokenRepository: get authentication token
+    activate ViewFavouriteSongsController
+    activate "Guest/Listener"
+    activate FavouriteSongsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ViewFavouriteSongsController -> LoginView: redirect
+    deactivate FavouriteSongsView
+    deactivate ViewFavouriteSongsController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authnetication token invalid
+    ViewFavouriteSongsController -> AuthTokenRepository: get authentication token
+    activate ViewFavouriteSongsController
+    activate "Guest/Listener"
+    activate FavouriteSongsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewFavouriteSongsController -> ViewFavouriteSongsInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ViewFavouriteSongsController
+    activate ViewFavouriteSongsInteractor
+
+    ViewFavouriteSongsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ViewFavouriteSongsInteractor ->> ViewFavouriteSongsPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewFavouriteSongsInteractor
+    activate ViewFavouriteSongsPresenter
+
+    ViewFavouriteSongsPresenter ->> FavouriteSongsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewFavouriteSongsPresenter
+
+    FavouriteSongsView -> LoginView: redirect
+    deactivate FavouriteSongsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml

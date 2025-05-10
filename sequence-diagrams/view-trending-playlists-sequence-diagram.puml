@@ -7,12 +7,12 @@ actor "Guest/Listener"
 boundary TrendingPlaylistsLinkView
 boundary TrendingPlaylistsView
 boundary LoginView
-participant ViewTrendingPlaylistController
-control ViewTrendingPlaylistInteractor <<InputBoundary>>
+participant ViewTrendingPlaylistsController
+control ViewTrendingPlaylistsInteractor <<InputBoundary>>
 participant AuthTokenRepository <<Gateway>>
 participant AuthTokenGenerator <<Gateway>>
 participant TrendAnalyzer <<Gateway>>
-participant ViewTrendingPlaylistPresenter <<OutputBoundary>>
+participant ViewTrendingPlaylistsPresenter <<OutputBoundary>>
 
 "Guest/Listener" -> TrendingPlaylistsLinkView: click on navigatable element
 activate "Guest/Listener"
@@ -22,35 +22,35 @@ TrendingPlaylistsLinkView -> TrendingPlaylistsView: redirect
 deactivate TrendingPlaylistsLinkView
 activate TrendingPlaylistsView
 
-TrendingPlaylistsView -> ViewTrendingPlaylistController: pass RequestObject\n(paginationRequest)
-activate ViewTrendingPlaylistController
+TrendingPlaylistsView -> ViewTrendingPlaylistsController: pass RequestObject\n(paginationRequest)
+activate ViewTrendingPlaylistsController
 
 alt OK
-    ViewTrendingPlaylistController -> AuthTokenRepository: get authentication token
+    ViewTrendingPlaylistsController -> AuthTokenRepository: get authentication token
     activate AuthTokenRepository
     return Some(authToken)
     deactivate AuthTokenRepository
 
-    ViewTrendingPlaylistController -> ViewTrendingPlaylistInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
-    deactivate ViewTrendingPlaylistController
-    activate ViewTrendingPlaylistInteractor
+    ViewTrendingPlaylistsController -> ViewTrendingPlaylistsInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
+    deactivate ViewTrendingPlaylistsController
+    activate ViewTrendingPlaylistsInteractor
 
-    ViewTrendingPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    ViewTrendingPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
-    ViewTrendingPlaylistInteractor <- AuthTokenGenerator: true
+    ViewTrendingPlaylistsInteractor <- AuthTokenGenerator: true
     deactivate AuthTokenGenerator
 
-    ViewTrendingPlaylistInteractor -> TrendAnalyzer: show trending Playlists\n(paginationRequest)
+    ViewTrendingPlaylistsInteractor -> TrendAnalyzer: show trending Playlists\n(paginationRequest)
     activate TrendAnalyzer
     return playlists
     deactivate TrendAnalyzer
 
-    ViewTrendingPlaylistInteractor ->> ViewTrendingPlaylistPresenter: pass ResponseModel\n(playlists)
-    deactivate ViewTrendingPlaylistInteractor
-    activate ViewTrendingPlaylistPresenter
+    ViewTrendingPlaylistsInteractor ->> ViewTrendingPlaylistsPresenter: pass ResponseModel\n(playlists)
+    deactivate ViewTrendingPlaylistsInteractor
+    activate ViewTrendingPlaylistsPresenter
 
-    ViewTrendingPlaylistPresenter ->> TrendingPlaylistsView: repackage & upate ViewModel\n(playlists)
-    deactivate ViewTrendingPlaylistPresenter
+    ViewTrendingPlaylistsPresenter ->> TrendingPlaylistsView: repackage & upate ViewModel\n(playlists)
+    deactivate ViewTrendingPlaylistsPresenter
 
     TrendingPlaylistsView -> "Guest/Listener": see the result of the interaction
     deactivate TrendingPlaylistsView
@@ -59,17 +59,17 @@ alt OK
     newpage
 
 else Error: Authentication token not found
-    ViewTrendingPlaylistController -> AuthTokenRepository: get authentication token
-    activate ViewTrendingPlaylistController
+    ViewTrendingPlaylistsController -> AuthTokenRepository: get authentication token
+    activate ViewTrendingPlaylistsController
     activate "Guest/Listener"
     activate TrendingPlaylistsView
     activate AuthTokenRepository
     return None
     deactivate AuthTokenRepository
 
-    ViewTrendingPlaylistController -> LoginView: redirect
+    ViewTrendingPlaylistsController -> LoginView: redirect
     deactivate TrendingPlaylistsView
-    deactivate ViewTrendingPlaylistController
+    deactivate ViewTrendingPlaylistsController
     activate LoginView
 
     LoginView -> "Guest/Listener": see the result of the interaction
@@ -77,29 +77,29 @@ else Error: Authentication token not found
     deactivate "Guest/Listener"
 
 else Error: Authnetication token invalid
-    ViewTrendingPlaylistController -> AuthTokenRepository: get authentication token
-    activate ViewTrendingPlaylistController
+    ViewTrendingPlaylistsController -> AuthTokenRepository: get authentication token
+    activate ViewTrendingPlaylistsController
     activate "Guest/Listener"
     activate TrendingPlaylistsView
     activate AuthTokenRepository
     return Some(authToken)
     deactivate AuthTokenRepository
 
-    ViewTrendingPlaylistController -> ViewTrendingPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
-    deactivate ViewTrendingPlaylistController
-    activate ViewTrendingPlaylistInteractor
+    ViewTrendingPlaylistsController -> ViewTrendingPlaylistsInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate ViewTrendingPlaylistsController
+    activate ViewTrendingPlaylistsInteractor
 
-    ViewTrendingPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    ViewTrendingPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
     return false
     deactivate AuthTokenGenerator
 
-    ViewTrendingPlaylistInteractor ->> ViewTrendingPlaylistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
-    deactivate ViewTrendingPlaylistInteractor
-    activate ViewTrendingPlaylistPresenter
+    ViewTrendingPlaylistsInteractor ->> ViewTrendingPlaylistsPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewTrendingPlaylistsInteractor
+    activate ViewTrendingPlaylistsPresenter
 
-    ViewTrendingPlaylistPresenter ->> TrendingPlaylistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
-    deactivate ViewTrendingPlaylistPresenter
+    ViewTrendingPlaylistsPresenter ->> TrendingPlaylistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewTrendingPlaylistsPresenter
 
     TrendingPlaylistsView -> LoginView: redirect
     deactivate TrendingPlaylistsView

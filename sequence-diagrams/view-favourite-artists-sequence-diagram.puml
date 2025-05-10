@@ -3,5 +3,121 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary FavouriteArtistsLinkView
+boundary FavouriteArtistsView
+boundary LoginView
+participant ViewFavouriteArtistsController
+control ViewFavouriteArtistsInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant FavouritesRepository <<Gateway>>
+participant ArtistRepository <<Gateway>>
+participant ViewFavouriteArtistsPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> FavouriteArtistsLinkView: click on navigatable element
+activate "Guest/Listener"
+activate FavouriteArtistsLinkView
+
+FavouriteArtistsLinkView -> FavouriteArtistsView: redirect
+deactivate FavouriteArtistsLinkView
+activate FavouriteArtistsView
+
+FavouriteArtistsView -> ViewFavouriteArtistsController: pass RequestObject\n(paginationRequest)
+activate ViewFavouriteArtistsController
+
+alt OK
+    ViewFavouriteArtistsController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewFavouriteArtistsController -> ViewFavouriteArtistsInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
+    deactivate ViewFavouriteArtistsController
+    activate ViewFavouriteArtistsInteractor
+
+    ViewFavouriteArtistsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewFavouriteArtistsInteractor <- AuthTokenGenerator: true
+
+    ViewFavouriteArtistsInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    ViewFavouriteArtistsInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    ViewFavouriteArtistsInteractor -> FavouritesRepository: show favourite Artist IDs of Listener\n(listenerId, paginationRequest)
+    activate FavouritesRepository
+    return artistIds
+    deactivate FavouritesRepository
+
+    ViewFavouriteArtistsInteractor -> ArtistRepository: get favourite Artists of Listener\n(artistIds)
+    activate ArtistRepository
+    return artists
+    deactivate ArtistRepository
+
+    ViewFavouriteArtistsInteractor ->> ViewFavouriteArtistsPresenter: pass ResponseModel\n(artists)
+    deactivate ViewFavouriteArtistsInteractor
+    activate ViewFavouriteArtistsPresenter
+
+    ViewFavouriteArtistsPresenter ->> FavouriteArtistsView: repackage & upate ViewModel\n(artists)
+    deactivate ViewFavouriteArtistsPresenter
+
+    FavouriteArtistsView -> "Guest/Listener": see the result of the interaction
+    deactivate FavouriteArtistsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    ViewFavouriteArtistsController -> AuthTokenRepository: get authentication token
+    activate ViewFavouriteArtistsController
+    activate "Guest/Listener"
+    activate FavouriteArtistsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ViewFavouriteArtistsController -> LoginView: redirect
+    deactivate FavouriteArtistsView
+    deactivate ViewFavouriteArtistsController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authnetication token invalid
+    ViewFavouriteArtistsController -> AuthTokenRepository: get authentication token
+    activate ViewFavouriteArtistsController
+    activate "Guest/Listener"
+    activate FavouriteArtistsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewFavouriteArtistsController -> ViewFavouriteArtistsInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate ViewFavouriteArtistsController
+    activate ViewFavouriteArtistsInteractor
+
+    ViewFavouriteArtistsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ViewFavouriteArtistsInteractor ->> ViewFavouriteArtistsPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewFavouriteArtistsInteractor
+    activate ViewFavouriteArtistsPresenter
+
+    ViewFavouriteArtistsPresenter ->> FavouriteArtistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewFavouriteArtistsPresenter
+
+    FavouriteArtistsView -> LoginView: redirect
+    deactivate FavouriteArtistsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml

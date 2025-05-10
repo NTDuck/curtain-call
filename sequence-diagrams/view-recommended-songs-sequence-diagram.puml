@@ -7,12 +7,12 @@ actor "Guest/Listener"
 boundary RecommendedSongsLinkView
 boundary RecommendedSongsView
 boundary LoginView
-participant ViewRecommendedSongController
-control ViewRecommendedSongInteractor <<InputBoundary>>
+participant ViewRecommendedSongsController
+control ViewRecommendedSongsInteractor <<InputBoundary>>
 participant AuthTokenRepository <<Gateway>>
 participant AuthTokenGenerator <<Gateway>>
 participant Recommendator <<Gateway>>
-participant ViewRecommendedSongPresenter <<OutputBoundary>>
+participant ViewRecommendedSongsPresenter <<OutputBoundary>>
 
 "Guest/Listener" -> RecommendedSongsLinkView: click on navigatable element
 activate "Guest/Listener"
@@ -22,38 +22,38 @@ RecommendedSongsLinkView -> RecommendedSongsView: redirect
 deactivate RecommendedSongsLinkView
 activate RecommendedSongsView
 
-RecommendedSongsView -> ViewRecommendedSongController: pass RequestObject\n(paginationRequest)
-activate ViewRecommendedSongController
+RecommendedSongsView -> ViewRecommendedSongsController: pass RequestObject\n(paginationRequest)
+activate ViewRecommendedSongsController
 
 alt OK
-    ViewRecommendedSongController -> AuthTokenRepository: get authentication token
+    ViewRecommendedSongsController -> AuthTokenRepository: get authentication token
     activate AuthTokenRepository
     return Some(authToken)
     deactivate AuthTokenRepository
 
-    ViewRecommendedSongController -> ViewRecommendedSongInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
-    deactivate ViewRecommendedSongController
-    activate ViewRecommendedSongInteractor
+    ViewRecommendedSongsController -> ViewRecommendedSongsInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
+    deactivate ViewRecommendedSongsController
+    activate ViewRecommendedSongsInteractor
 
-    ViewRecommendedSongInteractor -> AuthTokenGenerator: verify authentication token
+    ViewRecommendedSongsInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
-    ViewRecommendedSongInteractor <- AuthTokenGenerator: true
+    ViewRecommendedSongsInteractor <- AuthTokenGenerator: true
 
-    ViewRecommendedSongInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
-    ViewRecommendedSongInteractor <- AuthTokenGenerator: listenerId
+    ViewRecommendedSongsInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    ViewRecommendedSongsInteractor <- AuthTokenGenerator: listenerId
     deactivate AuthTokenGenerator
 
-    ViewRecommendedSongInteractor -> Recommendator: show recommended Songs for Listener\n(listenerId, paginationRequest)
+    ViewRecommendedSongsInteractor -> Recommendator: show recommended Songs for Listener\n(listenerId, paginationRequest)
     activate Recommendator
     return songs
     deactivate Recommendator
 
-    ViewRecommendedSongInteractor ->> ViewRecommendedSongPresenter: pass ResponseModel\n(songs)
-    deactivate ViewRecommendedSongInteractor
-    activate ViewRecommendedSongPresenter
+    ViewRecommendedSongsInteractor ->> ViewRecommendedSongsPresenter: pass ResponseModel\n(songs)
+    deactivate ViewRecommendedSongsInteractor
+    activate ViewRecommendedSongsPresenter
 
-    ViewRecommendedSongPresenter ->> RecommendedSongsView: repackage & upate ViewModel\n(songs)
-    deactivate ViewRecommendedSongPresenter
+    ViewRecommendedSongsPresenter ->> RecommendedSongsView: repackage & upate ViewModel\n(songs)
+    deactivate ViewRecommendedSongsPresenter
 
     RecommendedSongsView -> "Guest/Listener": see the result of the interaction
     deactivate RecommendedSongsView
@@ -62,17 +62,17 @@ alt OK
     newpage
 
 else Error: Authentication token not found
-    ViewRecommendedSongController -> AuthTokenRepository: get authentication token
-    activate ViewRecommendedSongController
+    ViewRecommendedSongsController -> AuthTokenRepository: get authentication token
+    activate ViewRecommendedSongsController
     activate "Guest/Listener"
     activate RecommendedSongsView
     activate AuthTokenRepository
     return None
     deactivate AuthTokenRepository
 
-    ViewRecommendedSongController -> LoginView: redirect
+    ViewRecommendedSongsController -> LoginView: redirect
     deactivate RecommendedSongsView
-    deactivate ViewRecommendedSongController
+    deactivate ViewRecommendedSongsController
     activate LoginView
 
     LoginView -> "Guest/Listener": see the result of the interaction
@@ -80,29 +80,29 @@ else Error: Authentication token not found
     deactivate "Guest/Listener"
 
 else Error: Authnetication token invalid
-    ViewRecommendedSongController -> AuthTokenRepository: get authentication token
-    activate ViewRecommendedSongController
+    ViewRecommendedSongsController -> AuthTokenRepository: get authentication token
+    activate ViewRecommendedSongsController
     activate "Guest/Listener"
     activate RecommendedSongsView
     activate AuthTokenRepository
     return Some(authToken)
     deactivate AuthTokenRepository
 
-    ViewRecommendedSongController -> ViewRecommendedSongInteractor: repackage & pass RequestModel\n(authToken, songId)
-    deactivate ViewRecommendedSongController
-    activate ViewRecommendedSongInteractor
+    ViewRecommendedSongsController -> ViewRecommendedSongsInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ViewRecommendedSongsController
+    activate ViewRecommendedSongsInteractor
 
-    ViewRecommendedSongInteractor -> AuthTokenGenerator: verify authentication token
+    ViewRecommendedSongsInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
     return false
     deactivate AuthTokenGenerator
 
-    ViewRecommendedSongInteractor ->> ViewRecommendedSongPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
-    deactivate ViewRecommendedSongInteractor
-    activate ViewRecommendedSongPresenter
+    ViewRecommendedSongsInteractor ->> ViewRecommendedSongsPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewRecommendedSongsInteractor
+    activate ViewRecommendedSongsPresenter
 
-    ViewRecommendedSongPresenter ->> RecommendedSongsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
-    deactivate ViewRecommendedSongPresenter
+    ViewRecommendedSongsPresenter ->> RecommendedSongsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewRecommendedSongsPresenter
 
     RecommendedSongsView -> LoginView: redirect
     deactivate RecommendedSongsView

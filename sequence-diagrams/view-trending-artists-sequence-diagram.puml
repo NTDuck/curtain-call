@@ -7,12 +7,12 @@ actor "Guest/Listener"
 boundary TrendingArtistsLinkView
 boundary TrendingArtistsView
 boundary LoginView
-participant ViewTrendingArtistController
-control ViewTrendingArtistInteractor <<InputBoundary>>
+participant ViewTrendingArtistsController
+control ViewTrendingArtistsInteractor <<InputBoundary>>
 participant AuthTokenRepository <<Gateway>>
 participant AuthTokenGenerator <<Gateway>>
 participant TrendAnalyzer <<Gateway>>
-participant ViewTrendingArtistPresenter <<OutputBoundary>>
+participant ViewTrendingArtistsPresenter <<OutputBoundary>>
 
 "Guest/Listener" -> TrendingArtistsLinkView: click on navigatable element
 activate "Guest/Listener"
@@ -22,35 +22,35 @@ TrendingArtistsLinkView -> TrendingArtistsView: redirect
 deactivate TrendingArtistsLinkView
 activate TrendingArtistsView
 
-TrendingArtistsView -> ViewTrendingArtistController: pass RequestObject\n(paginationRequest)
-activate ViewTrendingArtistController
+TrendingArtistsView -> ViewTrendingArtistsController: pass RequestObject\n(paginationRequest)
+activate ViewTrendingArtistsController
 
 alt OK
-    ViewTrendingArtistController -> AuthTokenRepository: get authentication token
+    ViewTrendingArtistsController -> AuthTokenRepository: get authentication token
     activate AuthTokenRepository
     return Some(authToken)
     deactivate AuthTokenRepository
 
-    ViewTrendingArtistController -> ViewTrendingArtistInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
-    deactivate ViewTrendingArtistController
-    activate ViewTrendingArtistInteractor
+    ViewTrendingArtistsController -> ViewTrendingArtistsInteractor: repackage & pass RequestModel\n(authToken, paginationRequest)
+    deactivate ViewTrendingArtistsController
+    activate ViewTrendingArtistsInteractor
 
-    ViewTrendingArtistInteractor -> AuthTokenGenerator: verify authentication token
+    ViewTrendingArtistsInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
-    ViewTrendingArtistInteractor <- AuthTokenGenerator: true
+    ViewTrendingArtistsInteractor <- AuthTokenGenerator: true
     deactivate AuthTokenGenerator
 
-    ViewTrendingArtistInteractor -> TrendAnalyzer: show trending Artists\n(paginationRequest)
+    ViewTrendingArtistsInteractor -> TrendAnalyzer: show trending Artists\n(paginationRequest)
     activate TrendAnalyzer
     return artists
     deactivate TrendAnalyzer
 
-    ViewTrendingArtistInteractor ->> ViewTrendingArtistPresenter: pass ResponseModel\n(artists)
-    deactivate ViewTrendingArtistInteractor
-    activate ViewTrendingArtistPresenter
+    ViewTrendingArtistsInteractor ->> ViewTrendingArtistsPresenter: pass ResponseModel\n(artists)
+    deactivate ViewTrendingArtistsInteractor
+    activate ViewTrendingArtistsPresenter
 
-    ViewTrendingArtistPresenter ->> TrendingArtistsView: repackage & upate ViewModel\n(artists)
-    deactivate ViewTrendingArtistPresenter
+    ViewTrendingArtistsPresenter ->> TrendingArtistsView: repackage & upate ViewModel\n(artists)
+    deactivate ViewTrendingArtistsPresenter
 
     TrendingArtistsView -> "Guest/Listener": see the result of the interaction
     deactivate TrendingArtistsView
@@ -59,17 +59,17 @@ alt OK
     newpage
 
 else Error: Authentication token not found
-    ViewTrendingArtistController -> AuthTokenRepository: get authentication token
-    activate ViewTrendingArtistController
+    ViewTrendingArtistsController -> AuthTokenRepository: get authentication token
+    activate ViewTrendingArtistsController
     activate "Guest/Listener"
     activate TrendingArtistsView
     activate AuthTokenRepository
     return None
     deactivate AuthTokenRepository
 
-    ViewTrendingArtistController -> LoginView: redirect
+    ViewTrendingArtistsController -> LoginView: redirect
     deactivate TrendingArtistsView
-    deactivate ViewTrendingArtistController
+    deactivate ViewTrendingArtistsController
     activate LoginView
 
     LoginView -> "Guest/Listener": see the result of the interaction
@@ -77,29 +77,29 @@ else Error: Authentication token not found
     deactivate "Guest/Listener"
 
 else Error: Authnetication token invalid
-    ViewTrendingArtistController -> AuthTokenRepository: get authentication token
-    activate ViewTrendingArtistController
+    ViewTrendingArtistsController -> AuthTokenRepository: get authentication token
+    activate ViewTrendingArtistsController
     activate "Guest/Listener"
     activate TrendingArtistsView
     activate AuthTokenRepository
     return Some(authToken)
     deactivate AuthTokenRepository
 
-    ViewTrendingArtistController -> ViewTrendingArtistInteractor: repackage & pass RequestModel\n(authToken, artistId)
-    deactivate ViewTrendingArtistController
-    activate ViewTrendingArtistInteractor
+    ViewTrendingArtistsController -> ViewTrendingArtistsInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate ViewTrendingArtistsController
+    activate ViewTrendingArtistsInteractor
 
-    ViewTrendingArtistInteractor -> AuthTokenGenerator: verify authentication token
+    ViewTrendingArtistsInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
     return false
     deactivate AuthTokenGenerator
 
-    ViewTrendingArtistInteractor ->> ViewTrendingArtistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
-    deactivate ViewTrendingArtistInteractor
-    activate ViewTrendingArtistPresenter
+    ViewTrendingArtistsInteractor ->> ViewTrendingArtistsPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewTrendingArtistsInteractor
+    activate ViewTrendingArtistsPresenter
 
-    ViewTrendingArtistPresenter ->> TrendingArtistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
-    deactivate ViewTrendingArtistPresenter
+    ViewTrendingArtistsPresenter ->> TrendingArtistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewTrendingArtistsPresenter
 
     TrendingArtistsView -> LoginView: redirect
     deactivate TrendingArtistsView
