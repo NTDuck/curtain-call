@@ -3,5 +3,109 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary SearchArtistsView
+boundary LoginView
+participant SearchArtistsController
+control SearchArtistsInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant ArtistRepository <<Gateway>>
+participant SearchArtistsPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> SearchArtistsView: enter query
+activate "Guest/Listener"
+activate SearchArtistsView
+
+"Guest/Listener" -> SearchArtistsView: click on submit button
+
+SearchArtistsView -> SearchArtistsController: pass RequestObject\n(query)
+activate SearchArtistsController
+
+alt OK
+    SearchArtistsController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    SearchArtistsController -> SearchArtistsInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate SearchArtistsController
+    deactivate SearchArtistsInteractor
+
+    SearchArtistsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    SearchArtistsInteractor -> ArtistRepository: search Artists\n(query)
+    activate ArtistRepository
+    return artists
+    deactivate ArtistRepository
+
+    SearchArtistsInteractor ->> SearchArtistsPresenter: pass ResponseModel\n(Ok(artists))
+    deactivate SearchArtistsInteractor
+    activate SearchArtistsPresenter
+
+    SearchArtistsPresenter ->> SearchArtistsView: repackage & update ViewModel\n(Ok())
+    deactivate SearchArtistsPresenter
+
+    SearchArtistsView -> "Guest/Listener": see the result of the interaction
+    deactivate SearchArtistsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    SearchArtistsController -> AuthTokenRepository: get authentication token
+    activate SearchArtistsController
+    activate "Guest/Listener"
+    activate SearchArtistsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    SearchArtistsController -> LoginView: redirect
+    deactivate SearchArtistsView
+    deactivate SearchArtistsController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    SearchArtistsController -> AuthTokenRepository: get authentication token
+    activate SearchArtistsController
+    activate "Guest/Listener"
+    activate SearchArtistsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    SearchArtistsController -> SearchArtistsInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate SearchArtistsController
+    activate SearchArtistsInteractor
+
+    SearchArtistsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    SearchArtistsInteractor ->> SearchArtistsPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate SearchArtistsInteractor
+    activate SearchArtistsPresenter
+
+    SearchArtistsPresenter ->> SearchArtistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate SearchArtistsPresenter
+
+    SearchArtistsView -> LoginView: redirect
+    deactivate SearchArtistsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml

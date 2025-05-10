@@ -3,5 +3,109 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary SearchPlaylistsView
+boundary LoginView
+participant SearchPlaylistsController
+control SearchPlaylistsInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant PlaylistRepository <<Gateway>>
+participant SearchPlaylistsPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> SearchPlaylistsView: enter query
+activate "Guest/Listener"
+activate SearchPlaylistsView
+
+"Guest/Listener" -> SearchPlaylistsView: click on submit button
+
+SearchPlaylistsView -> SearchPlaylistsController: pass RequestObject\n(query)
+activate SearchPlaylistsController
+
+alt OK
+    SearchPlaylistsController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    SearchPlaylistsController -> SearchPlaylistsInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate SearchPlaylistsController
+    deactivate SearchPlaylistsInteractor
+
+    SearchPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    SearchPlaylistsInteractor -> PlaylistRepository: search Playlists\n(query)
+    activate PlaylistRepository
+    return playlists
+    deactivate PlaylistRepository
+
+    SearchPlaylistsInteractor ->> SearchPlaylistsPresenter: pass ResponseModel\n(Ok(playlists))
+    deactivate SearchPlaylistsInteractor
+    activate SearchPlaylistsPresenter
+
+    SearchPlaylistsPresenter ->> SearchPlaylistsView: repackage & update ViewModel\n(Ok())
+    deactivate SearchPlaylistsPresenter
+
+    SearchPlaylistsView -> "Guest/Listener": see the result of the interaction
+    deactivate SearchPlaylistsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    SearchPlaylistsController -> AuthTokenRepository: get authentication token
+    activate SearchPlaylistsController
+    activate "Guest/Listener"
+    activate SearchPlaylistsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    SearchPlaylistsController -> LoginView: redirect
+    deactivate SearchPlaylistsView
+    deactivate SearchPlaylistsController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    SearchPlaylistsController -> AuthTokenRepository: get authentication token
+    activate SearchPlaylistsController
+    activate "Guest/Listener"
+    activate SearchPlaylistsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    SearchPlaylistsController -> SearchPlaylistsInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate SearchPlaylistsController
+    activate SearchPlaylistsInteractor
+
+    SearchPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    SearchPlaylistsInteractor ->> SearchPlaylistsPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate SearchPlaylistsInteractor
+    activate SearchPlaylistsPresenter
+
+    SearchPlaylistsPresenter ->> SearchPlaylistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate SearchPlaylistsPresenter
+
+    SearchPlaylistsView -> LoginView: redirect
+    deactivate SearchPlaylistsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml
