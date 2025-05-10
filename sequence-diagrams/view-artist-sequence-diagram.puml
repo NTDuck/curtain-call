@@ -1,0 +1,116 @@
+@startuml
+
+hide footbox
+skinparam BackgroundColor transparent
+
+actor Listener
+actor Guest
+boundary ArtistLinkView
+boundary ArtistView
+boundary LoginView
+participant ViewArtistController
+control ViewArtistInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant ArtistRepository <<Gateway>>
+participant ViewArtistPresenter <<OutputBoundary>>
+
+Listener -> ArtistLinkView: click on navigatable element
+activate ArtistLinkView
+activate Listener
+
+ArtistLinkView -> ArtistView: redirect
+deactivate ArtistLinkView
+activate ArtistView
+
+ArtistView -> ViewArtistController: pass RequestObject\n(artistId)
+activate ViewArtistController
+    
+alt OK
+    ViewArtistController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewArtistController -> ViewArtistInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate ViewArtistController
+    activate ViewArtistInteractor
+
+    ViewArtistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    ViewArtistInteractor -> ArtistRepository: get Artist
+    activate ArtistRepository
+    return Some(artist)
+    deactivate ArtistRepository
+
+    ViewArtistInteractor ->> ViewArtistPresenter: pass ResponseModel\n(Ok(artist))
+    deactivate ViewArtistInteractor
+    activate ViewArtistPresenter
+
+    ViewArtistPresenter ->> ArtistView: repackage & update ViewModel\n(Ok())
+    deactivate ViewArtistPresenter
+
+    ArtistView -> Listener: see the result of the interaction
+    deactivate Listener
+    newpage
+
+else Error: Authentication token not found
+    activate ViewArtistController
+
+    ViewArtistController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    deactivate Listener
+    activate Guest
+
+    ViewArtistController -> LoginView: redirect
+    deactivate ViewArtistController
+    activate LoginView
+
+    LoginView -> Guest: see the result of the interaction
+    deactivate LoginView
+    deactivate Guest
+
+else Error: Authentication token invalid
+    activate ViewArtistController
+
+    ViewArtistController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewArtistController -> ViewArtistInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    deactivate ViewArtistController
+    activate ViewArtistInteractor
+
+    ViewArtistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    deactivate Listener
+    activate Guest
+
+    ViewArtistInteractor ->> ViewArtistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewArtistInteractor
+    activate ViewArtistPresenter
+
+    ViewArtistPresenter ->> ArtistView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewArtistPresenter
+
+    ArtistView -> LoginView: redirect
+    deactivate ArtistView
+    activate LoginView
+
+    LoginView -> Guest: see the result of the interaction
+    deactivate LoginView
+    deactivate Guest
+
+end
+
+@enduml

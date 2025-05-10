@@ -76,6 +76,7 @@ alt OK
     activate LoginView
 
     LoginView -> Guest: see the result of the interaction
+    deactivate LoginView
     newpage
 
 else Error: Credentials are in incorrect format
@@ -115,5 +116,8 @@ else Error: Username already exists
     CreateListenerAccountView -> Guest: see the result of the interaction
 
 end
+
+deactivate Guest
+deactivate CreateListenerAccountView
 
 @enduml

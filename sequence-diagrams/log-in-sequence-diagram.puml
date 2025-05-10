@@ -59,7 +59,7 @@ alt OK
     deactivate LoginInteractor
     activate LoginPresenter
 
-    LoginPresenter ->> AuthTokenRepository: store authentication token\n(authToken)
+    LoginPresenter ->> AuthTokenRepository: save authentication token\n(authToken)
 
     LoginPresenter ->> LoginView: repackage & update ViewModel\n(Ok())
     deactivate LoginPresenter
