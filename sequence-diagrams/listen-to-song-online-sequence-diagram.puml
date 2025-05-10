@@ -3,5 +3,120 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary SongView
+boundary LoginView
+participant ListenToSongOnlineController
+control ListenToSongOnlineInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant SongRepository <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant ListenToSongOnlinePresenter <<OutputBoundary>>
+
+"Guest/Listener" -> SongView: click on paused button
+activate "Guest/Listener"
+activate SongView
+
+SongView -> SongView: update paused button to busy wait button
+SongView -> ListenToSongOnlineController: pass RequestObject\n(songId)
+activate ListenToSongOnlineController
+
+alt OK
+    ListenToSongOnlineController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ListenToSongOnlineController -> ListenToSongOnlineInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ListenToSongOnlineController
+    activate ListenToSongOnlineInteractor
+
+    ViewRecommendedPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewRecommendedPlaylistsInteractor <- AuthTokenGenerator: true
+
+    ViewRecommendedPlaylistsInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    ViewRecommendedPlaylistsInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    ListenToSongOnlineInteractor -> SongRepository: get Song audio URIs by ID\n(songId)
+    activate SongRepository
+    return Some(songAudioUris)
+    deactivate SongRepository
+
+    ListenToSongOnlineInteractor -> ListenerRepository: get Listener subscription plan\n(listenerId)
+    activate ListenerRepository
+    return listenerSubscription
+    deactivate ListenerRepository
+
+    ListenToSongOnlineInteractor -> ListenToSongOnlineInteractor: select Song audio URI based on Listener subscription plan
+    return songAudioUri
+    
+    ListenToSongOnlineInteractor ->> ListenToSongOnlinePresenter: pass ResponseModel\n(Ok(songAudioUri))
+    deactivate ListenToSongOnlineInteractor
+    activate ListenToSongOnlinePresenter
+
+    ListenToSongOnlinePresenter ->> SongView: repackage & update ViewModel\n(Ok())
+    deactivate ListenToSongOnlinePresenter
+
+    SongView -> SongView: play Song audio URI\n(songAudioUri)
+    SongView -> SongView: update busy wait button to playing button
+    SongView -> "Guest/Listener": see the result of the interaction
+    deactivate SongView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    ListenToSongOnlineController -> AuthTokenRepository: get authentication token
+    activate ListenToSongOnlineController
+    activate "Guest/Listener"
+    activate SongView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ListenToSongOnlineController -> LoginView: redirect
+    deactivate SongView
+    deactivate ListenToSongOnlineController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    ListenToSongOnlineController -> AuthTokenRepository: get authentication token
+    activate ListenToSongOnlineController
+    activate "Guest/Listener"
+    activate SongView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ListenToSongOnlineController -> ListenToSongOnlineInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ListenToSongOnlineController
+    activate ListenToSongOnlineInteractor
+
+    ListenToSongOnlineInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ListenToSongOnlineInteractor ->> ListenToSongOnlinePresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ListenToSongOnlineInteractor
+    activate ListenToSongOnlinePresenter
+
+    ListenToSongOnlinePresenter ->> SongView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ListenToSongOnlinePresenter
+
+    SongView -> LoginView: redirect
+    deactivate SongView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
 
 @enduml
