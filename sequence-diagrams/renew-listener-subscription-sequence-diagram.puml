@@ -3,5 +3,174 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary SubscriptionView
+boundary PaymentView
+boundary LoginView
+participant RenewSubscriptionController
+control RenewSubscriptionInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant RenewSubscriptionPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> SubscriptionView: click on "renew subscription" button
+activate "Guest/Listener"
+activate SubscriptionView
+
+SubscriptionView -> PaymentView: redirect
+deactivate SubscriptionView
+activate PaymentView
+
+"Guest/Listener" -> PaymentView: enter banking credentials
+"Guest/Listener" -> PaymentView: click on submit button
+
+alt OK
+    PaymentView -> RenewSubscriptionController: pass RequestObject
+    deactivate PaymentView
+    activate RenewSubscriptionController
+
+    RenewSubscriptionController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    RenewSubscriptionController -> RenewSubscriptionInteractor: pass RequestModel\n(authToken)
+    deactivate RenewSubscriptionController
+    activate RenewSubscriptionInteractor
+
+    RenewSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    RenewSubscriptionInteractor <- AuthTokenGenerator: true
+    RenewSubscriptionInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    RenewSubscriptionInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    RenewSubscriptionInteractor -> ListenerRepository: check if Listener's subscription is Cancelled/Expired\n(listenerId)
+    activate ListenerRepository
+    RenewSubscriptionInteractor <- ListenerRepository: true
+    RenewSubscriptionInteractor ->> ListenerRepository: change Listener's subscription to Premium
+    deactivate ListenerRepository
+
+    RenewSubscriptionInteractor -> RenewSubscriptionPresenter: pass ResponseModel\n(Ok())
+    deactivate RenewSubscriptionInteractor
+    activate RenewSubscriptionPresenter
+
+    RenewSubscriptionPresenter ->> SubscriptionView: repackage & update ViewModel\n(Ok())
+    activate SubscriptionView
+    deactivate RenewSubscriptionPresenter
+
+    SubscriptionView -> "Guest/Listener": see the result of the interaction
+    deactivate SubscriptionView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Payment fails
+    PaymentView -> SubscriptionView: redirect
+    activate PaymentView
+    activate SubscriptionView
+    activate "Guest/Listener"
+    deactivate PaymentView
+
+    SubscriptionView -> "Guest/Listener": see the result of the interaction
+    deactivate SubscriptionView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token not found
+    PaymentView -> RenewSubscriptionController: pass RequestObject
+    activate "Guest/Listener"
+    deactivate PaymentView
+    activate RenewSubscriptionController
+
+    RenewSubscriptionController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    RenewSubscriptionController -> LoginView: redirect
+    deactivate RenewSubscriptionController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+
+    PaymentView -> RenewSubscriptionController: pass RequestObject
+    activate "Guest/Listener"
+    deactivate PaymentView
+    activate RenewSubscriptionController
+
+    RenewSubscriptionController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    RenewSubscriptionController -> RenewSubscriptionInteractor: repackage & pass RequestModel\n(authToken)
+    deactivate RenewSubscriptionController
+    activate RenewSubscriptionInteractor
+
+    RenewSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    RenewSubscriptionInteractor ->> RenewSubscriptionPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate RenewSubscriptionInteractor
+    activate RenewSubscriptionPresenter
+
+    RenewSubscriptionPresenter ->> SubscriptionView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate RenewSubscriptionPresenter
+    activate SubscriptionView
+
+    SubscriptionView -> LoginView: redirect
+    deactivate SubscriptionView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Listener is not Cancelled/Expired
+    PaymentView -> RenewSubscriptionController: pass RequestObject
+    deactivate PaymentView
+    activate RenewSubscriptionController
+
+    RenewSubscriptionController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    RenewSubscriptionController -> RenewSubscriptionInteractor: pass RequestModel\n(authToken)
+    deactivate RenewSubscriptionController
+    activate RenewSubscriptionInteractor
+
+    RenewSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    RenewSubscriptionInteractor <- AuthTokenGenerator: true
+    RenewSubscriptionInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    RenewSubscriptionInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    RenewSubscriptionInteractor -> ListenerRepository: check if Listener's subscription is Cancelled/Expired
+    activate ListenerRepository
+    RenewSubscriptionInteractor <- ListenerRepository: false
+    deactivate ListenerRepository
+
+    RenewSubscriptionInteractor -> RenewSubscriptionPresenter: pass ResponseModel\n(Err(ListenerIsNotCancelledOrExpired))
+    deactivate RenewSubscriptionInteractor
+    activate RenewSubscriptionPresenter
+
+    RenewSubscriptionPresenter ->> SubscriptionView: repackage & update ViewModel\n(Err(ListenerIsNotCancelledOrExpired))
+    activate SubscriptionView
+    deactivate RenewSubscriptionPresenter
+
+    SubscriptionView -> "Guest/Listener": see the result of the interaction
+    deactivate SubscriptionView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml

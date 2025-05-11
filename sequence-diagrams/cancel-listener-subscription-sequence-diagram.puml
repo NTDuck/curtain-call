@@ -3,5 +3,148 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary SubscriptionView
+boundary LoginView
+participant CancelSubscriptionController
+control CancelSubscriptionInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant CancelSubscriptionPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> SubscriptionView: click on "cancel subscription" button
+activate "Guest/Listener"
+activate SubscriptionView
+
+SubscriptionView -> CancelSubscriptionController: pass RequestObject
+activate CancelSubscriptionController
+
+alt OK
+    CancelSubscriptionController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    CancelSubscriptionController -> CancelSubscriptionInteractor: repackage & pass RequestModel\n(authToken)
+    deactivate CancelSubscriptionController
+    activate CancelSubscriptionInteractor
+
+    CancelSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    CancelSubscriptionInteractor <- AuthTokenGenerator: true
+    CancelSubscriptionInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    CancelSubscriptionInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    CancelSubscriptionInteractor -> ListenerRepository: check if Listener's subscription is Premium\n(listenerId)
+    activate ListenerRepository
+    CancelSubscriptionInteractor <- ListenerRepository: true
+    CancelSubscriptionInteractor ->> ListenerRepository: change Listener's subscription to Cancelled
+    deactivate ListenerRepository
+
+    CancelSubscriptionInteractor -> CancelSubscriptionPresenter: pass ResponseModel\n(Ok())
+    deactivate CancelSubscriptionInteractor
+    activate CancelSubscriptionPresenter
+
+    CancelSubscriptionPresenter ->> SubscriptionView: repackage & update ViewModel\n(Ok())
+    deactivate CancelSubscriptionPresenter
+
+    SubscriptionView -> "Guest/Listener": see the result of the interaction
+    deactivate SubscriptionView
+    deactivate "Guest/Listener"
+    newpage
+
+
+else Error: Authentication token not found
+    CancelSubscriptionController -> AuthTokenRepository: get authentication token
+    activate "Guest/Listener"
+    activate CancelSubscriptionController
+    activate SubscriptionView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    CancelSubscriptionController -> LoginView: redirect
+    deactivate SubscriptionView 
+    deactivate CancelSubscriptionController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    CancelSubscriptionController -> AuthTokenRepository: get authentication token
+    activate "Guest/Listener"
+    activate CancelSubscriptionController
+    activate SubscriptionView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    CancelSubscriptionController -> CancelSubscriptionInteractor: repackage & pass RequestModel\n(authToken)
+    deactivate CancelSubscriptionController
+    activate CancelSubscriptionInteractor
+
+    CancelSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    CancelSubscriptionInteractor <- AuthTokenGenerator: false
+    deactivate AuthTokenGenerator
+
+    CancelSubscriptionInteractor ->> CancelSubscriptionPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate CancelSubscriptionInteractor
+    activate CancelSubscriptionPresenter
+
+    CancelSubscriptionPresenter ->> SubscriptionView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate CancelSubscriptionPresenter
+
+    SubscriptionView -> LoginView: redirect
+    deactivate SubscriptionView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Listener's subscription is not Premium
+    CancelSubscriptionController -> AuthTokenRepository: get authentication token
+    activate "Guest/Listener"
+    activate CancelSubscriptionController
+    activate SubscriptionView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    CancelSubscriptionController -> CancelSubscriptionInteractor: pass RequestModel\n(authToken)
+    deactivate CancelSubscriptionController
+    activate CancelSubscriptionInteractor
+
+    CancelSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    CancelSubscriptionInteractor <- AuthTokenGenerator: true
+    CancelSubscriptionInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    CancelSubscriptionInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    CancelSubscriptionInteractor -> ListenerRepository: check if Listener's subscription is Premium\n(listenerId)
+    activate ListenerRepository
+    CancelSubscriptionInteractor <- ListenerRepository: false
+    deactivate ListenerRepository
+
+    CancelSubscriptionInteractor -> CancelSubscriptionPresenter: pass ResponseModel\n(Err(ListenerIsNotPremium))
+    deactivate CancelSubscriptionInteractor
+    activate CancelSubscriptionPresenter
+
+    CancelSubscriptionPresenter ->> SubscriptionView: repackage & update ViewModel\n(Err(ListenerIsNotPremium))
+    deactivate CancelSubscriptionPresenter
+
+    SubscriptionView -> "Guest/Listener": see the result of the interaction
+    deactivate SubscriptionView
+    deactivate "Guest/Listener"
+
+
+end
 
 @enduml

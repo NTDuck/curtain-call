@@ -41,12 +41,14 @@ alt OK
 
     ActivateSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
-    return true
+    ActivateSubscriptionInteractor <- AuthTokenGenerator: true
+    ActivateSubscriptionInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    ActivateSubscriptionInteractor <- AuthTokenGenerator: listenerId
     deactivate AuthTokenGenerator
 
-    ActivateSubscriptionInteractor -> ListenerRepository: check if Listener is Premium
+    ActivateSubscriptionInteractor -> ListenerRepository: check if Listener's subcription is Free\n(listenerId)
     activate ListenerRepository
-    ActivateSubscriptionInteractor <- ListenerRepository: false
+    ActivateSubscriptionInteractor <- ListenerRepository: true
     ActivateSubscriptionInteractor ->> ListenerRepository: change Listener's subscription to Premium
     deactivate ListenerRepository
 
@@ -111,13 +113,14 @@ else Error: Authentication token invalid
 
     ActivateSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
-    return false
+    ActivateSubscriptionInteractor <- AuthTokenGenerator: false
     deactivate AuthTokenGenerator
 
     ActivateSubscriptionInteractor ->> ActivateSubscriptionPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
     deactivate ActivateSubscriptionInteractor
+    activate ActivateSubscriptionPresenter
 
-    ActivateSubscriptionInteractor ->> SubscriptionView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    ActivateSubscriptionPresenter ->> SubscriptionView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
     deactivate ActivateSubscriptionPresenter
     activate SubscriptionView
 
@@ -130,7 +133,7 @@ else Error: Authentication token invalid
     deactivate "Guest/Listener"
     newpage
 
-else Error: Listener is already Premium
+else Error: Listener's subscription is not Free
 
     PaymentView -> ActivateSubscriptionController: pass RequestObject
     deactivate PaymentView
@@ -147,19 +150,21 @@ else Error: Listener is already Premium
 
     ActivateSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
-    return true
+    ActivateSubscriptionInteractor <- AuthTokenGenerator: true
+    ActivateSubscriptionInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    ActivateSubscriptionInteractor <- AuthTokenGenerator: listenerId
     deactivate AuthTokenGenerator
 
-    ActivateSubscriptionInteractor -> ListenerRepository: check if Listener is Premium
+    ActivateSubscriptionInteractor -> ListenerRepository: check if Listener's subscription is Free\n(listenerId)
     activate ListenerRepository
-    ActivateSubscriptionInteractor <- ListenerRepository: true
+    ActivateSubscriptionInteractor <- ListenerRepository: false
     deactivate ListenerRepository
 
-    ActivateSubscriptionInteractor -> ActivateSubscriptionPresenter: pass ResponseModel\n(Err(ListenerIsAlreadyPremium))
+    ActivateSubscriptionInteractor -> ActivateSubscriptionPresenter: pass ResponseModel\n(Err(ListenerIsNotFree))
     deactivate ActivateSubscriptionInteractor
     activate ActivateSubscriptionPresenter
 
-    ActivateSubscriptionPresenter ->> SubscriptionView: repackage & update ViewModel\n(Err(ListenerIsAlreadyPremium))
+    ActivateSubscriptionPresenter ->> SubscriptionView: repackage & update ViewModel\n(Err(ListenerIsNotFree))
     activate SubscriptionView
     deactivate ActivateSubscriptionPresenter
 
