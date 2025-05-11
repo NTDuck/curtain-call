@@ -1,0 +1,160 @@
+@startuml
+
+hide footbox
+skinparam BackgroundColor transparent
+
+actor "Guest/Listener"
+boundary LoginView
+boundary RequestAccountRecoveryView
+boundary ResetPasswordView
+participant RequestAccountRecoveryController
+participant ResetPasswordController
+control RequestAccountRecoveryInteractor <<InputBoundary>>
+control ResetPasswordInteractor <<InputBoundary>>
+participant ListenerRepository <<Gateway>>
+participant ResetAccountTokenGenerator <<Gateway>>
+participant ResetAccountEmailComposser <<Gateway>>
+participant ResetAccountEmailSender <<Gateway>>
+participant UserCredentialsVerifier <<Gateway>>
+participant PasswordEncoder <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant RequestAccountRecoveryPresenter <<OutputBoundary>>
+participant ResetPasswordPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> LoginView: click on "recover account" button
+activate "Guest/Listener"
+activate LoginView
+
+LoginView -> RequestAccountRecoveryView: redirect
+deactivate LoginView
+activate RequestAccountRecoveryView
+
+"Guest/Listener" -> RequestAccountRecoveryView: enter username
+"Guest/Listener" -> RequestAccountRecoveryView: click on submit button
+
+RequestAccountRecoveryView -> RequestAccountRecoveryController: pass RequestObject\n(username)
+activate RequestAccountRecoveryController
+
+RequestAccountRecoveryController -> RequestAccountRecoveryInteractor: pass RequestModel\n(username)
+deactivate RequestAccountRecoveryController
+activate RequestAccountRecoveryInteractor
+    
+alt OK
+    RequestAccountRecoveryInteractor -> ListenerRepository: check if Listener exists\n(username)
+    activate ListenerRepository
+    RequestAccountRecoveryInteractor <- ListenerRepository: true
+    RequestAccountRecoveryInteractor -> ListenerRepository: get Listener ID and email\n(username)
+    RequestAccountRecoveryInteractor <- ListenerRepository: Some(listenerId), Some(listenerEmail)
+    deactivate ListenerRepository
+
+    RequestAccountRecoveryInteractor -> ResetAccountTokenGenerator: generate reset account token\n(listenerId, username)
+    activate ResetAccountTokenGenerator
+    return resetAccountToken
+    deactivate ResetAccountTokenGenerator
+
+    RequestAccountRecoveryInteractor -> ResetAccountEmailComposser: generate reset account email content\n(resetAccountToken)
+    activate ResetAccountEmailComposser
+    return resetAccountEmailContent
+    deactivate ResetAccountEmailComposser
+
+    RequestAccountRecoveryInteractor ->> ResetAccountEmailSender: send to Listener email\n(listenerEmail, resetAccountEmailContent)
+    
+    RequestAccountRecoveryInteractor ->> RequestAccountRecoveryPresenter: pass ResponseModel\n(Ok(listenerEmail))
+    deactivate RequestAccountRecoveryInteractor
+    activate RequestAccountRecoveryPresenter
+
+    RequestAccountRecoveryPresenter ->> RequestAccountRecoveryView: repackage & update ViewModel\n(Ok(listenerEmail))
+    deactivate RequestAccountRecoveryPresenter
+
+    RequestAccountRecoveryView -> "Guest/Listener": see the result of the interaction
+    deactivate RequestAccountRecoveryView
+    deactivate "Guest/Listener"
+
+    newpage
+
+    "Guest/Listener" -> ResetPasswordView: redirected from sent email
+    activate "Guest/Listener"
+    activate ResetPasswordView
+
+    "Guest/Listener" -> ResetPasswordView: enter new password
+    "Guest/Listener" -> ResetPasswordView: click on submit button
+
+    ResetPasswordView -> ResetPasswordController: pass RequestObject\n(resetAccountToken, password)
+    activate ResetPasswordController
+
+    ResetPasswordController ->> ResetPasswordInteractor: repackage & pass RequestModel\n(resetAccountToken, password)
+    deactivate ResetPasswordController
+    activate ResetPasswordInteractor
+
+    alt OK
+        ResetPasswordInteractor -> UserCredentialsVerifier: check if password is in correct format\n(password)
+        activate UserCredentialsVerifier
+        return true
+        deactivate UserCredentialsVerifier
+
+        ResetPasswordInteractor -> PasswordEncoder: encode password\n(password)
+        activate PasswordEncoder
+        return encodedPassword
+        deactivate PasswordEncoder
+
+        ResetPasswordInteractor ->> ListenerRepository: update Listener's new password\n(encodedPassword)
+
+        ResetPasswordInteractor ->> ResetPasswordPresenter: pass ResponseModel\n(Ok())
+        deactivate ResetPasswordInteractor
+        activate ResetPasswordPresenter
+
+        ResetPasswordPresenter ->> ResetPasswordView: repackage & update ViewModel\n(Ok())
+        deactivate ResetPasswordPresenter
+
+        ResetPasswordView -> LoginView: redirect
+        deactivate ResetPasswordView
+        activate LoginView
+
+        LoginView -> "Guest/Listener": see the result of the interaction
+        deactivate LoginView
+        deactivate "Guest/Listener"
+
+    else Error: Password is in incorrect format
+        ResetPasswordInteractor -> UserCredentialsVerifier: check if password is in correct format\n(password)
+        activate ResetPasswordInteractor
+        activate "Guest/Listener"
+        activate ResetPasswordView
+        activate UserCredentialsVerifier
+        return false
+        deactivate UserCredentialsVerifier
+
+        ResetPasswordInteractor ->> ResetPasswordPresenter: pass ResponseModel\n(Err(PasswordMalformed))
+        deactivate ResetPasswordInteractor
+        activate ResetPasswordPresenter
+
+        ResetPasswordPresenter ->> ResetPasswordView: repackage & update ViewModel\n(Err(PasswordMalformed))
+        deactivate ResetPasswordPresenter
+
+        ResetPasswordView -> "Guest/Listener": see the result of the interaction
+        deactivate ResetPasswordView
+        deactivate "Guest/Listener"
+    end
+    newpage
+
+else Error: Listener with username not found
+    RequestAccountRecoveryInteractor -> ListenerRepository: check if Listener exists\n(username)
+    activate "Guest/Listener"
+    activate RequestAccountRecoveryView
+    activate RequestAccountRecoveryInteractor
+    activate ListenerRepository
+    RequestAccountRecoveryInteractor <- ListenerRepository: false
+
+    RequestAccountRecoveryInteractor ->> RequestAccountRecoveryPresenter: pass ResponseModel\n(Err(ListenerNotFound))
+    deactivate RequestAccountRecoveryInteractor
+    activate RequestAccountRecoveryPresenter
+
+    RequestAccountRecoveryPresenter ->> RequestAccountRecoveryView: repackage & update ViewModel\n(Err(ListenerNotFound))
+    deactivate RequestAccountRecoveryPresenter
+
+    RequestAccountRecoveryView -> "Guest/Listener": see the result of the interaction
+    deactivate RequestAccountRecoveryView
+    deactivate "Guest/Listener"
+    
+end
+
+@enduml

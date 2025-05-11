@@ -13,7 +13,6 @@ participant UserCredentialsVerifier <<Gateway>>
 participant ListenerRepository <<Gateway>>
 participant UuidGenerator <<Gateway>>
 participant PasswordEncoder <<Gateway>>
-entity Listener <<Entity>>
 participant CreateListenerAccountPresenter <<OutputBoundary>>
 
 Guest -> GuestHomeView: click on create account button
@@ -57,10 +56,7 @@ alt OK
 
     end
 
-    CreateListenerInteractor -> Listener: instantiate with listenerId, encodedCredentials,\nother attributes default\n(listenerId, encodedCredentials)
-    return listener
-
-    CreateListenerInteractor -> ListenerRepository: save Listener\n(listener)
+    CreateListenerInteractor -> ListenerRepository: save Listener with listenerId, encodedCredentials, metadata,\nother attributes defaulted\n(listenerId, encodedCredentials, metadata)
     deactivate ListenerRepository
     
     CreateListenerInteractor ->> CreateListenerAccountPresenter: pass ResponseModel\n(Ok())
