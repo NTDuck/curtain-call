@@ -1,0 +1,99 @@
+@startuml
+
+left to right direction
+hide empty members
+skinparam BackgroundColor transparent
+
+interface ListenerRepository <<trait>> {
+    + save(listener: Listener)
+    + remove(listenerId: Uuid)
+    
+    + getById(listenerId: Uuid) -> Listener
+    + contains(listenerId: Uuid) -> bool
+}
+
+interface SongRepository <<trait>> {
+    + save(song: Song)
+    + remove(songId: Uuid)
+    
+    + getById(songId: Uuid) -> Song
+    + contains(songId: Uuid) -> bool
+}
+
+interface PlaylistRepository <<trait>> {
+    + save(playlist: Playlist)
+    + remove(playlistId: Uuid)
+    
+    + getById(playlistId: Uuid) -> Song
+    + contains(playlistId: Uuid) -> bool
+
+    + show(listenerId: Uuid, paginationRequest: PaginationRequest)\n-> PaginationResponse<Playlist>
+}
+
+interface ArtistRepository <<trait>> {
+    + getById(songId: Uuid) -> Artist
+    + contains(songId: Uuid) -> bool
+}
+
+interface FavouritesRepository <<trait>> {
+    + saveSong(listenerId: Uuid, songId: Uuid)
+    + removeSong(listenerId: Uuid, songId: Uuid)
+    + showSongs(listenerId: Uuid, songId: Uuid, \npaginationRequest: PaginationRequest) -> PaginationResponse<Song>
+
+    + savePlaylist(listenerId: Uuid, playlistId: Uuid)
+    + removePlaylist(listenerId: Uuid, playlistId: Uuid)
+    + showPlaylists(listenerId: Uuid, playlistId: Uuid, \npaginationRequest: PaginationRequest) -> PaginationResponse<Playlist>
+
+    + saveArtist(listenerId: Uuid, artistId: Uuid)
+    + removeArtist(listenerId: Uuid, artistId: Uuid)
+    + showPArtist(listenerId: Uuid, artistId: Uuid, \npaginationRequest: PaginationRequest) -> PaginationResponse<Artist>
+}
+
+interface AuthTokenRepository <<trait>> {
+    + save(authToken: String)
+    + get() -> String
+}
+
+interface AuthTokenGenerator <<trait>> {
+    + generate(listenerId: Uuid) -> String
+
+    + verify(authToken: String) -> bool
+    + getListenerId(authToken: String) -> Uuid
+}
+
+interface PasswordEncoder <<trait>> {
+    + encode(rawPassword: String) -> String
+    + verify(rawPassword: String, encodedPassword: String) -> bool
+}
+
+interface ResetAccountTokenGenerator <<trait>> {
+    + generate(listenerId: Uuid) -> String
+}
+
+interface ResetAccountEmailComposser <<trait>> {
+    + compose(listenerId: Uuid, username: String) -> String
+}
+
+interface ResetAccountEmailSender <<trait>> {
+    + send(content: String, address: String)
+}
+
+interface UserCredentialsVerifier <<trait>> {
+    + verify(credentials: UserCredentials)
+}
+
+class PaginationRequest <<struct>> {
+    + pageIndex: usize
+    + maxPageSize: usize
+}
+
+class PaginationResponse<T> <<struct>> {
+    + items: Vec<T>
+
+    + pageIndex: usize
+    + maxPageIndex: usize
+    + pageSize: usize
+    + maxPageSize: usize
+}
+
+@enduml

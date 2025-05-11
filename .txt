@@ -1,0 +1,7 @@
+- cac thanh vien trong nhom nen o truoc ?
+- why kien truc? (slide 5) needs clarification
+- slide 10: needs modification (dont use image of .txt) and slide 11 too
+
+- who did what
+- slide 12: why REST? should be agnostic
+- 

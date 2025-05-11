@@ -49,7 +49,7 @@ alt OK
     deactivate ViewSongInteractor
     activate ViewSongPresenter
 
-    ViewSongPresenter ->> SongView: repackage & update ViewModel\n(Ok())
+    ViewSongPresenter ->> SongView: repackage & update ViewModel\n(Ok(song))
     deactivate ViewSongPresenter
 
     SongView -> "Guest/Listener": see the result of the interaction
@@ -108,6 +108,7 @@ else Error: Authentication token invalid
     LoginView -> "Guest/Listener": see the result of the interaction
     deactivate LoginView
     deactivate "Guest/Listener"
+    newpage
 
 else Error: Song not found
     ViewSongController -> AuthTokenRepository: get authentication token

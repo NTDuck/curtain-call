@@ -14,7 +14,7 @@ class UserCredentials <<struct>> {
   + password: String
 }
 
-UserCredentials -- User
+UserCredentials "1" *-- "1" User
 
 class Listener <<struct>> {
   + metadata: ListenerMetadata
@@ -23,6 +23,10 @@ class Listener <<struct>> {
 }
 
 Listener <|-- User
+Listener "1" ..> "n" Playlist: owns
+Listener "n" ..> "m" Song: favourites
+Listener "n" ..> "m" Playlist: favourites
+Listener "n" ..> "m" Artist: favourites
 
 class ListenerMetadata <<struct>> {
   + email: String
@@ -33,14 +37,14 @@ class ListenerMetadata <<struct>> {
   + language: String
 }
 
-ListenerMetadata -- Listener
+ListenerMetadata "1" *-- "1" Listener
 
 class ListenerContent <<struct>> {
   + playlistIds: Vec<Uuid>
   + favourites: ListenerFavourites
 }
 
-ListenerContent -- Listener
+ListenerContent "1" *-- "1" Listener
 
 class ListenerFavourites <<struct>> {
   + songIds: Vec<Uuid>
@@ -48,14 +52,12 @@ class ListenerFavourites <<struct>> {
   + artistIds: Vec<Uuid>
 }
 
-ListenerFavourites -- ListenerContent
-
-ListenerFollows -- ListenerContent
+ListenerFavourites "1" *-- "1" ListenerContent
 
 enum ListenerSubscription <<enum>> {
 }
 
-ListenerSubscription -- Listener
+ListenerSubscription "1" *-- "1" Listener
 
 class Free <<variant>> {
 }
@@ -89,7 +91,7 @@ class ListenerPreferences <<struct>> {
   + autoplayEnabled: bool
 }
 
-ListenerPreferences -- Listener
+ListenerPreferences "1" *-- "1" Listener
 
 class Artist <<struct>> {
   + metadata: ArtistMetadata
@@ -98,6 +100,8 @@ class Artist <<struct>> {
 }
 
 Artist <|-- User
+Artist "n" ..> "m" Song: creates
+Artist "n" ..> "m" Playlist: publishes
 
 class ArtistMetadata <<struct>> {
   + email: String
@@ -109,21 +113,21 @@ class ArtistMetadata <<struct>> {
   + avatarUri: String
 }
 
-ArtistMetadata -- Artist
+ArtistMetadata "1" *-- "1" Artist
 
 class ArtistContent <<struct>> {
   + singleIds: Vec<Uuid>
   + albumIds: Vec<Uuid>
 }
 
-ArtistContent -- Artist
+ArtistContent "1" *-- "1" Artist
 
 class ArtistAnalytics <<struct>> {
   + playCount: usize
   + favouritesCount: usize
 }
 
-ArtistAnalytics -- Artist
+ArtistAnalytics "1" *-- "1" Artist
 
 class Song <<struct>> {
   + id: Uuid
@@ -139,21 +143,21 @@ class SongMetadata <<struct>> {
   + duration: Duration
 }
 
-SongMetadata -- Song
+SongMetadata "1" *-- "1" Song
 
 class SongAudio <<struct>> {
   + basicUri: String
   + premiumUri: String
 }
 
-SongAudio -- Song
+SongAudio "1" *-- "1" Song
 
 class SongAnalytics <<struct>> {
   + playCount: usize
   + favouritesCount: usize
 }
 
-SongAnalytics -- Song
+SongAnalytics "1" *-- "1" Song
 
 class Playlist <<struct>> {
   + id: Uuid
@@ -162,6 +166,8 @@ class Playlist <<struct>> {
   + analytics: PlaylistAnalytics
 }
 
+Playlist "n" ..> "m" Song: contains
+
 class PlaylistMetadata <<struct>> {
   + title: String
   + artistIds: Vec<Uuid>
@@ -169,13 +175,13 @@ class PlaylistMetadata <<struct>> {
   + isPublic: bool
 }
 
-PlaylistMetadata -- Playlist
+PlaylistMetadata "1" *-- "1" Playlist
 
 class PlaylistAnalytics <<struct>> {
   + playCount: usize
   + favouritesCount: usize
 }
 
-PlaylistAnalytics -- Playlist
+PlaylistAnalytics "1" *-- "1" Playlist
 
 @enduml
