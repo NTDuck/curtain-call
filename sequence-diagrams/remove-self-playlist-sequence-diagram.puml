@@ -3,5 +3,151 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary ListenerPlaylistsView
+boundary LoginView
+participant RemoveListenerPlaylistController
+control RemoveListenerPlaylistInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant PlaylistRepository <<Gateway>>
+participant RemoveListenerPlaylistPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> ListenerPlaylistsView: click on "delete playlist" button on a playlist element
+activate "Guest/Listener"
+activate ListenerPlaylistsView
+
+ListenerPlaylistsView -> RemoveListenerPlaylistController: pass RequestObject\n(playlistId)
+activate RemoveListenerPlaylistController
+
+alt OK
+    RemoveListenerPlaylistController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    RemoveListenerPlaylistController -> RemoveListenerPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate RemoveListenerPlaylistController
+    activate RemoveListenerPlaylistInteractor
+
+    RemoveListenerPlaylistInteractor -> AuthTokenGenerator: verify authentication token\n(authToken)
+    activate AuthTokenGenerator
+    RemoveListenerPlaylistInteractor <- AuthTokenGenerator: true
+    RemoveListenerPlaylistInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    return listenerId
+    deactivate AuthTokenGenerator
+
+    RemoveListenerPlaylistInteractor -> ListenerRepository: check if Listener's subcription is Premium\n(listenerId)
+    activate ListenerRepository
+    return true
+    deactivate ListenerRepository
+
+    RemoveListenerPlaylistInteractor ->> PlaylistRepository: remove Playlist\n(playlistId)
+
+    RemoveListenerPlaylistInteractor ->> RemoveListenerPlaylistPresenter: pass ResponseModel\n(Ok())
+    deactivate RemoveListenerPlaylistInteractor
+    activate RemoveListenerPlaylistPresenter
+
+    RemoveListenerPlaylistPresenter ->> ListenerPlaylistsView: repackage & update ViewModel\n(Ok())
+    deactivate RemoveListenerPlaylistPresenter
+
+    ListenerPlaylistsView -> "Guest/Listener": see the result of the interaction
+    deactivate ListenerPlaylistsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    RemoveListenerPlaylistController -> AuthTokenRepository: get authentication token
+    activate RemoveListenerPlaylistController
+    activate "Guest/Listener"
+    activate RemovePlaylistView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    RemoveListenerPlaylistController -> LoginView: redirect
+    deactivate RemovePlaylistView
+    deactivate RemoveListenerPlaylistController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    RemoveListenerPlaylistController -> AuthTokenRepository: get authentication token
+    activate RemoveListenerPlaylistController
+    activate "Guest/Listener"
+    activate RemovePlaylistView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    RemoveListenerPlaylistController -> RemoveListenerPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate RemoveListenerPlaylistController
+    activate RemoveListenerPlaylistInteractor
+
+    RemoveListenerPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    RemoveListenerPlaylistInteractor ->> RemoveListenerPlaylistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate RemoveListenerPlaylistInteractor
+    activate RemoveListenerPlaylistPresenter
+
+    RemoveListenerPlaylistPresenter ->> ListenerPlaylistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate RemoveListenerPlaylistPresenter
+
+    ListenerPlaylistsView ->> LoginView: redirect
+    deactivate RemovePlaylistView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Listener is not Premium
+    RemoveListenerPlaylistController -> AuthTokenRepository: get authentication token
+    activate RemoveListenerPlaylistController
+    activate "Guest/Listener"
+    activate RemovePlaylistView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    RemoveListenerPlaylistController -> RemoveListenerPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistMetadata)
+    deactivate RemoveListenerPlaylistController
+    activate RemoveListenerPlaylistInteractor
+
+    RemoveListenerPlaylistInteractor -> AuthTokenGenerator: verify authentication token\n(authToken)
+    activate AuthTokenGenerator
+    RemoveListenerPlaylistInteractor <- AuthTokenGenerator: true
+    RemoveListenerPlaylistInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    return listenerId
+    deactivate AuthTokenGenerator
+
+    RemoveListenerPlaylistInteractor -> ListenerRepository: check if Listener's subcription is Premium\n(listenerId)
+    activate ListenerRepository
+    return false
+    deactivate ListenerRepository
+
+    RemoveListenerPlaylistInteractor ->> RemoveListenerPlaylistPresenter: pass ResponseModel\n(Err(ListenerIsNotPremium))
+    deactivate RemoveListenerPlaylistInteractor
+    activate RemoveListenerPlaylistPresenter
+
+    RemoveListenerPlaylistPresenter ->> RemovePlaylistView: repackage & update ViewModel\n(Err(ListenerIsNotPremium))
+    deactivate RemoveListenerPlaylistPresenter
+
+    RemovePlaylistView -> ListenerPlaylistsView: redirect
+    deactivate RemovePlaylistView
+    activate ListenerPlaylistsView
+
+    ListenerPlaylistsView -> "Guest/Listener": see the result of the interaction
+    deactivate ListenerPlaylistsView
+    deactivate "Guest/Listener"
 
 @enduml

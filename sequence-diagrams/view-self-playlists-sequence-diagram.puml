@@ -3,5 +3,113 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary ListenerPlaylistLinkView
+boundary ListenerPlaylistsView
+boundary LoginView
+participant ViewListenerPlaylistsController
+control ViewListenerPlaylistsInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant PlaylistRepository <<Gateway>>
+participant ViewListenerPlaylistsPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> ListenerPlaylistLinkView: click on navigatable element
+activate "Guest/Listener"
+activate ListenerPlaylistLinkView
+
+ListenerPlaylistLinkView -> ListenerPlaylistsView: redirect
+deactivate ListenerPlaylistLinkView
+activate ListenerPlaylistsView
+
+ListenerPlaylistsView -> ViewListenerPlaylistsController: pass RequestObject
+activate ViewListenerPlaylistsController
+
+alt OK
+    ViewListenerPlaylistsController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewListenerPlaylistsController -> ViewListenerPlaylistsInteractor: repackage & pass RequestModel\n(authToken)
+    deactivate ViewListenerPlaylistsController
+    activate ViewListenerPlaylistsInteractor
+
+    ViewListenerPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewListenerPlaylistsInteractor <- AuthTokenGenerator: true
+    ViewListenerPlaylistsInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    deactivate AuthTokenGenerator
+
+    ViewListenerPlaylistsInteractor -> PlaylistRepository: show Playlists of Listener\n(listenerId)
+    activate PlaylistRepository
+    return playlists
+    deactivate PlaylistRepository
+
+    ViewListenerPlaylistsInteractor ->> ViewListenerPlaylistsPresenter: pass ResponseModel\n(Ok(playlists))
+    deactivate ViewListenerPlaylistsInteractor
+    activate ViewListenerPlaylistsPresenter
+
+    ViewListenerPlaylistsPresenter ->> ListenerPlaylistsView: repackage & update ViewModel\n(Ok())
+    deactivate ViewListenerPlaylistsPresenter
+
+    ListenerPlaylistsView -> "Guest/Listener": see the result of the interaction
+    deactivate ListenerPlaylistsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    ViewListenerPlaylistsController -> AuthTokenRepository: get authentication token
+    activate ViewListenerPlaylistsController
+    activate "Guest/Listener"
+    activate ListenerPlaylistsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ViewListenerPlaylistsController -> LoginView: redirect
+    deactivate ListenerPlaylistsView
+    deactivate ViewListenerPlaylistsController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    ViewListenerPlaylistsController -> AuthTokenRepository: get authentication token
+    activate ViewListenerPlaylistsController
+    activate "Guest/Listener"
+    activate ListenerPlaylistsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewListenerPlaylistsController -> ViewListenerPlaylistsInteractor: repackage & pass RequestModel\n(authToken)
+    deactivate ViewListenerPlaylistsController
+    activate ViewListenerPlaylistsInteractor
+
+    ViewListenerPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ViewListenerPlaylistsInteractor ->> ViewListenerPlaylistsPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewListenerPlaylistsInteractor
+    activate ViewListenerPlaylistsPresenter
+
+    ViewListenerPlaylistsPresenter ->> ListenerPlaylistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewListenerPlaylistsPresenter
+
+    ListenerPlaylistsView -> LoginView: redirect
+    deactivate ListenerPlaylistsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml

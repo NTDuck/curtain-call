@@ -28,9 +28,9 @@ alt OK
     return Some(authToken)
     deactivate AuthTokenRepository
 
-    SearchPlaylistsController -> SearchPlaylistsInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    SearchPlaylistsController -> SearchPlaylistsInteractor: repackage & pass RequestModel\n(authToken, query)
     deactivate SearchPlaylistsController
-    deactivate SearchPlaylistsInteractor
+    activate SearchPlaylistsInteractor
 
     SearchPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
@@ -82,7 +82,7 @@ else Error: Authentication token invalid
     return Some(authToken)
     deactivate AuthTokenRepository
 
-    SearchPlaylistsController -> SearchPlaylistsInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    SearchPlaylistsController -> SearchPlaylistsInteractor: repackage & pass RequestModel\n(authToken, query)
     deactivate SearchPlaylistsController
     activate SearchPlaylistsInteractor
 

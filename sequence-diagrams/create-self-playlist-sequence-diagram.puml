@@ -3,5 +3,169 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary ListenerPlaylistsView
+boundary CreatePlaylistView
+boundary LoginView
+participant CreateListenerPlaylistController
+control CreateListenerPlaylistInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant UuidGenerator <<Gateway>>
+participant PlaylistRepository <<Gateway>>
+participant CreateListenerPlaylistPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> ListenerPlaylistsView: click on "create playlist" button
+activate "Guest/Listener"
+activate ListenerPlaylistsView
+
+ListenerPlaylistsView -> CreatePlaylistView: redirect
+deactivate ListenerPlaylistsView
+activate CreatePlaylistView
+
+"Guest/Listener" -> CreatePlaylistView: enter playlist metadata
+"Guest/Listener" -> CreatePlaylistView: click on submit button
+
+CreatePlaylistView -> CreateListenerPlaylistController: pass RequestObject\n(playlistMetadata)
+activate CreateListenerPlaylistController
+
+alt OK
+    CreateListenerPlaylistController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    CreateListenerPlaylistController -> CreateListenerPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistMetadata)
+    deactivate CreateListenerPlaylistController
+    activate CreateListenerPlaylistInteractor
+
+    CreateListenerPlaylistInteractor -> AuthTokenGenerator: verify authentication token\n(authToken)
+    activate AuthTokenGenerator
+    CreateListenerPlaylistInteractor <- AuthTokenGenerator: true
+    CreateListenerPlaylistInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    return listenerId
+    deactivate AuthTokenGenerator
+
+    CreateListenerPlaylistInteractor -> ListenerRepository: check if Listener's subcription is Premium\n(listenerId)
+    activate ListenerRepository
+    return true
+    deactivate ListenerRepository
+
+    CreateListenerPlaylistInteractor -> UuidGenerator: generate Playlist ID
+    activate UuidGenerator
+    return playlistId
+    deactivate UuidGenerator
+
+    CreateListenerPlaylistInteractor ->> PlaylistRepository: create & save Playlist\n(listenerId, playlistId, playlistMetadata)
+
+    CreateListenerPlaylistInteractor ->> CreateListenerPlaylistPresenter: pass ResponseModel\n(Ok())
+    deactivate CreateListenerPlaylistInteractor
+    activate CreateListenerPlaylistPresenter
+
+    CreateListenerPlaylistPresenter ->> CreatePlaylistView: repackage & update ViewModel\n(Ok())
+    deactivate CreateListenerPlaylistPresenter
+
+    CreatePlaylistView -> ListenerPlaylistsView: redirect
+    deactivate CreatePlaylistView
+    activate ListenerPlaylistsView
+
+    ListenerPlaylistsView -> "Guest/Listener": see the result of the interaction
+    deactivate ListenerPlaylistsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    CreateListenerPlaylistController -> AuthTokenRepository: get authentication token
+    activate CreateListenerPlaylistController
+    activate "Guest/Listener"
+    activate CreatePlaylistView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    CreateListenerPlaylistController -> LoginView: redirect
+    deactivate CreatePlaylistView
+    deactivate CreateListenerPlaylistController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    CreateListenerPlaylistController -> AuthTokenRepository: get authentication token
+    activate CreateListenerPlaylistController
+    activate "Guest/Listener"
+    activate CreatePlaylistView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    CreateListenerPlaylistController -> CreateListenerPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistMetadata)
+    deactivate CreateListenerPlaylistController
+    activate CreateListenerPlaylistInteractor
+
+    CreateListenerPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    CreateListenerPlaylistInteractor ->> CreateListenerPlaylistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate CreateListenerPlaylistInteractor
+    activate CreateListenerPlaylistPresenter
+
+    CreateListenerPlaylistPresenter ->> CreatePlaylistView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate CreateListenerPlaylistPresenter
+
+    CreatePlaylistView ->> LoginView: redirect
+    deactivate CreatePlaylistView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Listener is not Premium
+    CreateListenerPlaylistController -> AuthTokenRepository: get authentication token
+    activate CreateListenerPlaylistController
+    activate "Guest/Listener"
+    activate CreatePlaylistView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    CreateListenerPlaylistController -> CreateListenerPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistMetadata)
+    deactivate CreateListenerPlaylistController
+    activate CreateListenerPlaylistInteractor
+
+    CreateListenerPlaylistInteractor -> AuthTokenGenerator: verify authentication token\n(authToken)
+    activate AuthTokenGenerator
+    CreateListenerPlaylistInteractor <- AuthTokenGenerator: true
+    CreateListenerPlaylistInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    return listenerId
+    deactivate AuthTokenGenerator
+
+    CreateListenerPlaylistInteractor -> ListenerRepository: check if Listener's subcription is Premium\n(listenerId)
+    activate ListenerRepository
+    return false
+    deactivate ListenerRepository
+
+    CreateListenerPlaylistInteractor ->> CreateListenerPlaylistPresenter: pass ResponseModel\n(Err(ListenerIsNotPremium))
+    deactivate CreateListenerPlaylistInteractor
+    activate CreateListenerPlaylistPresenter
+
+    CreateListenerPlaylistPresenter ->> CreatePlaylistView: repackage & update ViewModel\n(Err(ListenerIsNotPremium))
+    deactivate CreateListenerPlaylistPresenter
+
+    CreatePlaylistView -> ListenerPlaylistsView: redirect
+    deactivate CreatePlaylistView
+    activate ListenerPlaylistsView
+
+    ListenerPlaylistsView -> "Guest/Listener": see the result of the interaction
+    deactivate ListenerPlaylistsView
+    deactivate "Guest/Listener"
 
 @enduml

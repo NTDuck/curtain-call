@@ -28,9 +28,9 @@ alt OK
     return Some(authToken)
     deactivate AuthTokenRepository
 
-    SearchArtistsController -> SearchArtistsInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    SearchArtistsController -> SearchArtistsInteractor: repackage & pass RequestModel\n(authToken, query)
     deactivate SearchArtistsController
-    deactivate SearchArtistsInteractor
+    activate SearchArtistsInteractor
 
     SearchArtistsInteractor -> AuthTokenGenerator: verify authentication token
     activate AuthTokenGenerator
@@ -82,7 +82,7 @@ else Error: Authentication token invalid
     return Some(authToken)
     deactivate AuthTokenRepository
 
-    SearchArtistsController -> SearchArtistsInteractor: repackage & pass RequestModel\n(authToken, artistId)
+    SearchArtistsController -> SearchArtistsInteractor: repackage & pass RequestModel\n(authToken, query)
     deactivate SearchArtistsController
     activate SearchArtistsInteractor
 
