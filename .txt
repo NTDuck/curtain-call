@@ -5,3 +5,30 @@
 - who did what
 - slide 12: why REST? should be agnostic
 - 
+
+- 4 layers
+- domain layer: business objects, dai dien cho business
+- use cases layer: chuc nang cua he thong
+- boundaries: entry point ma he thong ben ngoai su dung de access vao use cases, duoc dac trung boi cac DTO, bao gom input & output
+- interactors: dac ta chi tiet ve chuc nang cua he thong, implement input boundaries
+- gateways: abstractions phan anh yeu cau cua he thong ve co so ha tang (db...)
+- domain & UC biet lap ve framework, transportation protocol, delivery mechanism, etc.
+
+- interface adapters: cau noi giua interface ben ngoai va use cases cua he thong, MVC...
+- gateways: implementation cua gateways use case, e.g. ORM
+
+- dep rule: cac quan he phu thuoc vuot ranh gioi cac layer theo cung 1 chieu
+
+- configurations:
+    + entry point cua he thong
+    + noi xay ra DI, tuc lua chon interactors nao impl boundaries nao, gateways nao impl gateways nao
+
+- sequence diagram: mo ta vua chi tiet vua khai quat ve use case cua ban hieu duoc impl nnao
+
+- class diagram: domain layer
+- DDD: entity listener, artist ke thua user, song, playlist, valueobjects quan he composition 1:1
+- khac DDD: cac mui ten dut. playlist thay vi store songs thi store ids, vi vay khong su dung aggregation
+
+- gateways: toan bo yeu cau cua he thong ve co so ha tang, vi du song repository abstract cho song db
+- yeu cau, vi artist repository khong co chuc nang 
+- khong co mui ten vi gateways khong biet ve su ton tai cua nhau
