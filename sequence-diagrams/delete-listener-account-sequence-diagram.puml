@@ -3,5 +3,113 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary ListenerAccountView
+boundary LoginView
+participant DeleteListenerAccountController
+control DeleteListenerAccountInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant DeleteListenerAccountPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> ListenerAccountView: click on delete account element
+activate "Guest/Listener"
+activate ListenerAccountView
+
+"Guest/Listener" -> ListenerAccountView: click on "confirm account deletion" pop-up
+
+ListenerAccountView -> DeleteListenerAccountController: pass RequestObject
+activate DeleteListenerAccountController
+
+alt OK
+    DeleteListenerAccountController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    DeleteListenerAccountController -> DeleteListenerAccountInteractor: repackage & pass RequestModel\n(authToken)
+    deactivate DeleteListenerAccountController
+    activate DeleteListenerAccountInteractor
+
+    DeleteListenerAccountInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    DeleteListenerAccountInteractor <- AuthTokenGenerator: true
+    DeleteListenerAccountInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    DeleteListenerAccountInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    DeleteListenerAccountInteractor -> ListenerRepository: remove Listener\n(listenerId)
+
+    DeleteListenerAccountInteractor ->> DeleteListenerAccountPresenter: pass ResponseModel\n(Ok())
+    deactivate DeleteListenerAccountInteractor
+    activate DeleteListenerAccountPresenter
+
+    DeleteListenerAccountPresenter ->> ListenerAccountView: repackage & update ViewModel\n(Ok())
+    deactivate DeleteListenerAccountPresenter
+    
+    ListenerAccountView -> LoginView: redirect
+    deactivate ListenerAccountView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    DeleteListenerAccountController -> AuthTokenRepository: get authentication token
+    activate DeleteListenerAccountController
+    activate "Guest/Listener"
+    activate ListenerAccountView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    DeleteListenerAccountController -> LoginView: redirect
+    deactivate ListenerAccountView
+    deactivate DeleteListenerAccountController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    DeleteListenerAccountController -> AuthTokenRepository: get authentication token
+    activate DeleteListenerAccountController
+    activate "Guest/Listener"
+    activate ListenerAccountView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    DeleteListenerAccountController -> DeleteListenerAccountInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate DeleteListenerAccountController
+    activate DeleteListenerAccountInteractor
+
+    DeleteListenerAccountInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    DeleteListenerAccountInteractor ->> DeleteListenerAccountPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate DeleteListenerAccountInteractor
+    activate DeleteListenerAccountPresenter
+
+    DeleteListenerAccountPresenter ->> ListenerAccountView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate DeleteListenerAccountPresenter
+
+    ListenerAccountView -> LoginView: redirect
+    deactivate ListenerAccountView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+end
 
 @enduml
