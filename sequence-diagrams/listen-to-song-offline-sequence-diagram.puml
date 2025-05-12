@@ -3,5 +3,120 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary OfflineSongView
+boundary LoginView
+participant ListenToSongOfflineController
+control ListenToSongOfflineInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant LocalSongRepository <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant ListenToSongOfflinePresenter <<OutputBoundary>>
+
+"Guest/Listener" -> OfflineSongView: click on paused button
+activate "Guest/Listener"
+activate OfflineSongView
+
+OfflineSongView -> OfflineSongView: update paused button to busy wait button
+OfflineSongView -> ListenToSongOfflineController: pass RequestObject\n(songId)
+activate ListenToSongOfflineController
+
+alt OK
+    ListenToSongOfflineController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ListenToSongOfflineController -> ListenToSongOfflineInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ListenToSongOfflineController
+    activate ListenToSongOfflineInteractor
+
+    ViewRecommendedPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewRecommendedPlaylistsInteractor <- AuthTokenGenerator: true
+
+    ViewRecommendedPlaylistsInteractor -> AuthTokenGenerator: get Listener ID from authentication token\n(authToken)
+    ViewRecommendedPlaylistsInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    ListenToSongOfflineInteractor -> LocalSongRepository: get Song audio URIs by ID\n(songId)
+    activate LocalSongRepository
+    return Some(songAudioUris)
+    deactivate LocalSongRepository
+
+    ListenToSongOfflineInteractor -> ListenerRepository: get Listener subscription plan\n(listenerId)
+    activate ListenerRepository
+    return listenerSubscription
+    deactivate ListenerRepository
+
+    ListenToSongOfflineInteractor -> ListenToSongOfflineInteractor: select Song audio URI based on Listener subscription plan
+    return songAudioUri
+    
+    ListenToSongOfflineInteractor ->> ListenToSongOfflinePresenter: pass ResponseModel\n(Ok(songAudioUri))
+    deactivate ListenToSongOfflineInteractor
+    activate ListenToSongOfflinePresenter
+
+    ListenToSongOfflinePresenter ->> OfflineSongView: repackage & update ViewModel\n(Ok())
+    deactivate ListenToSongOfflinePresenter
+
+    OfflineSongView -> OfflineSongView: play Song audio URI\n(songAudioUri)
+    OfflineSongView -> OfflineSongView: update busy wait button to playing button
+    OfflineSongView -> "Guest/Listener": see the result of the interaction
+    deactivate OfflineSongView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    ListenToSongOfflineController -> AuthTokenRepository: get authentication token
+    activate ListenToSongOfflineController
+    activate "Guest/Listener"
+    activate OfflineSongView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ListenToSongOfflineController -> LoginView: redirect
+    deactivate OfflineSongView
+    deactivate ListenToSongOfflineController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    ListenToSongOfflineController -> AuthTokenRepository: get authentication token
+    activate ListenToSongOfflineController
+    activate "Guest/Listener"
+    activate OfflineSongView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ListenToSongOfflineController -> ListenToSongOfflineInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ListenToSongOfflineController
+    activate ListenToSongOfflineInteractor
+
+    ListenToSongOfflineInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ListenToSongOfflineInteractor ->> ListenToSongOfflinePresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ListenToSongOfflineInteractor
+    activate ListenToSongOfflinePresenter
+
+    ListenToSongOfflinePresenter ->> OfflineSongView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ListenToSongOfflinePresenter
+
+    OfflineSongView -> LoginView: redirect
+    deactivate OfflineSongView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
 
 @enduml
