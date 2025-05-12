@@ -3,5 +3,149 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary SongView
+boundary LoginView
+participant DownloadSongController
+control DownloadSongInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant SongRepository <<Gateway>>
+participant LocalSongRepository <<Gateway>>
+participant DownloadSongPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> SongView: click on download button
+activate "Guest/Listener"
+activate SongView
+
+SongView -> DownloadSongController: pass RequestObject\n(songId)
+activate DownloadSongController
+
+alt OK
+    DownloadSongController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(token)
+    deactivate AuthTokenRepository
+
+    DownloadSongController -> DownloadSongInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate DownloadSongController
+    activate DownloadSongInteractor
+
+    DownloadSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    DownloadSongInteractor <- AuthTokenGenerator: true
+    DownloadSongInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    DownloadSongInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    DownloadSongInteractor -> SongRepository: get Song by ID\n(songId)
+    activate SongRepository
+    return Some(song)
+    deactivate SongRepository
+
+    DownloadSongInteractor ->> LocalSongRepository: save Song as Listener's download\n(listenerId, song)
+
+    DownloadSongInteractor ->> DownloadSongPresenter: pass ResponseModel\n(Ok(song))
+    deactivate DownloadSongInteractor
+    activate DownloadSongPresenter
+
+    DownloadSongPresenter ->> SongView: repackage & update ViewModel\n(Ok(song))
+    deactivate DownloadSongPresenter
+
+    SongView -> "Guest/Listener": see the result of the interaction
+    deactivate SongView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    DownloadSongController -> AuthTokenRepository: get authentication token
+    activate DownloadSongController
+    activate "Guest/Listener"
+    activate SongView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    DownloadSongController -> LoginView: redirect
+    deactivate SongView
+    deactivate DownloadSongController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    DownloadSongController -> AuthTokenRepository: get authentication token
+    activate DownloadSongController
+    activate "Guest/Listener"
+    activate SongView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    DownloadSongController -> DownloadSongInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate DownloadSongController
+    activate DownloadSongInteractor
+
+    DownloadSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    DownloadSongInteractor <- AuthTokenGenerator: false
+    deactivate AuthTokenGenerator
+
+    DownloadSongInteractor ->> DownloadSongPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate DownloadSongInteractor
+    activate DownloadSongPresenter
+
+    DownloadSongPresenter ->> SongView: repackage & update ViewModel\n(Err(AuthTokenInvalidv))
+    deactivate DownloadSongPresenter
+
+    SongView -> LoginView: redirect
+    deactivate SongView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Song not found
+    DownloadSongController -> AuthTokenRepository: get authentication token
+    activate DownloadSongController
+    activate "Guest/Listener"
+    activate SongView
+    activate AuthTokenRepository
+    return Some(token)
+    deactivate AuthTokenRepository
+
+    DownloadSongController -> DownloadSongInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate DownloadSongController
+    activate DownloadSongInteractor
+
+    DownloadSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    DownloadSongInteractor <- AuthTokenGenerator: true
+    DownloadSongInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    DownloadSongInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    DownloadSongInteractor -> SongRepository: get Song by ID\n(songId)
+    activate SongRepository
+    return None
+    deactivate SongRepository
+
+    DownloadSongInteractor ->> DownloadSongPresenter: pass ResponseModel\n(Err(SongNotFound))
+    deactivate DownloadSongInteractor
+    activate DownloadSongPresenter
+
+    DownloadSongPresenter ->> SongView: repackage & update ViewModel\n(Err(SongNotFound))
+    deactivate DownloadSongPresenter
+
+    SongView -> "Guest/Listener": see the result of the interaction
+    deactivate SongView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml

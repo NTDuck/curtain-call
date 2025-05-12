@@ -3,5 +3,149 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary PlaylistView
+boundary LoginView
+participant DownloadPlaylistController
+control DownloadPlaylistInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant PlaylistRepository <<Gateway>>
+participant LocalPlaylistRepository <<Gateway>>
+participant DownloadPlaylistPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> PlaylistView: click on download button
+activate "Guest/Listener"
+activate PlaylistView
+
+PlaylistView -> DownloadPlaylistController: pass RequestObject\n(playlistId)
+activate DownloadPlaylistController
+
+alt OK
+    DownloadPlaylistController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(token)
+    deactivate AuthTokenRepository
+
+    DownloadPlaylistController -> DownloadPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate DownloadPlaylistController
+    activate DownloadPlaylistInteractor
+
+    DownloadPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    DownloadPlaylistInteractor <- AuthTokenGenerator: true
+    DownloadPlaylistInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    DownloadPlaylistInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    DownloadPlaylistInteractor -> PlaylistRepository: get Playlist by ID\n(playlistId)
+    activate PlaylistRepository
+    return Some(playlist)
+    deactivate PlaylistRepository
+
+    DownloadPlaylistInteractor ->> LocalPlaylistRepository: save Playlist as Listener's download\n(listenerId, playlist)
+
+    DownloadPlaylistInteractor ->> DownloadPlaylistPresenter: pass ResponseModel\n(Ok(playlist))
+    deactivate DownloadPlaylistInteractor
+    activate DownloadPlaylistPresenter
+
+    DownloadPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Ok(playlist))
+    deactivate DownloadPlaylistPresenter
+
+    PlaylistView -> "Guest/Listener": see the result of the interaction
+    deactivate PlaylistView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    DownloadPlaylistController -> AuthTokenRepository: get authentication token
+    activate DownloadPlaylistController
+    activate "Guest/Listener"
+    activate PlaylistView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    DownloadPlaylistController -> LoginView: redirect
+    deactivate PlaylistView
+    deactivate DownloadPlaylistController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+
+else Error: Authentication token invalid
+    DownloadPlaylistController -> AuthTokenRepository: get authentication token
+    activate DownloadPlaylistController
+    activate "Guest/Listener"
+    activate PlaylistView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    DownloadPlaylistController -> DownloadPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate DownloadPlaylistController
+    activate DownloadPlaylistInteractor
+
+    DownloadPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    DownloadPlaylistInteractor <- AuthTokenGenerator: false
+    deactivate AuthTokenGenerator
+
+    DownloadPlaylistInteractor ->> DownloadPlaylistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate DownloadPlaylistInteractor
+    activate DownloadPlaylistPresenter
+
+    DownloadPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Err(AuthTokenInvalidv))
+    deactivate DownloadPlaylistPresenter
+
+    PlaylistView -> LoginView: redirect
+    deactivate PlaylistView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Playlist not found
+    DownloadPlaylistController -> AuthTokenRepository: get authentication token
+    activate DownloadPlaylistController
+    activate "Guest/Listener"
+    activate PlaylistView
+    activate AuthTokenRepository
+    return Some(token)
+    deactivate AuthTokenRepository
+
+    DownloadPlaylistController -> DownloadPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate DownloadPlaylistController
+    activate DownloadPlaylistInteractor
+
+    DownloadPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    DownloadPlaylistInteractor <- AuthTokenGenerator: true
+    DownloadPlaylistInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    DownloadPlaylistInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    DownloadPlaylistInteractor -> PlaylistRepository: get Playlist by ID\n(playlistId)
+    activate PlaylistRepository
+    return None
+    deactivate PlaylistRepository
+
+    DownloadPlaylistInteractor ->> DownloadPlaylistPresenter: pass ResponseModel\n(Err(PlaylistNotFound))
+    deactivate DownloadPlaylistInteractor
+    activate DownloadPlaylistPresenter
+
+    DownloadPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Err(PlaylistNotFound))
+    deactivate DownloadPlaylistPresenter
+
+    PlaylistView -> "Guest/Listener": see the result of the interaction
+    deactivate PlaylistView
+    deactivate "Guest/Listener"
+
+end
 
 @enduml

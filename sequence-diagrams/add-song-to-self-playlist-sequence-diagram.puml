@@ -3,5 +3,8 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary 
+
 
 @enduml

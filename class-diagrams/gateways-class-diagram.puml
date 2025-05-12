@@ -8,7 +8,7 @@ interface ListenerRepository <<trait>> {
     + save(listener: Listener)
     + remove(listenerId: Uuid)
     
-    + getById(listenerId: Uuid) -> Listener
+    + getById(listenerId: Uuid) -> Option<Listener>
     + contains(listenerId: Uuid) -> bool
 }
 
@@ -16,7 +16,7 @@ interface SongRepository <<trait>> {
     + save(song: Song)
     + remove(songId: Uuid)
     
-    + getById(songId: Uuid) -> Song
+    + getById(songId: Uuid) -> Option<Song>
     + contains(songId: Uuid) -> bool
 }
 
@@ -24,14 +24,14 @@ interface PlaylistRepository <<trait>> {
     + save(playlist: Playlist)
     + remove(playlistId: Uuid)
     
-    + getById(playlistId: Uuid) -> Song
+    + getById(playlistId: Uuid) -> Option<Song>
     + contains(playlistId: Uuid) -> bool
 
     + show(listenerId: Uuid, paginationRequest: PaginationRequest)\n-> PaginationResponse<Playlist>
 }
 
 interface ArtistRepository <<trait>> {
-    + getById(songId: Uuid) -> Artist
+    + getById(songId: Uuid) -> Option<Artist>
     + contains(songId: Uuid) -> bool
 }
 
@@ -49,15 +49,26 @@ interface FavouritesRepository <<trait>> {
     + showPArtist(listenerId: Uuid, artistId: Uuid, \npaginationRequest: PaginationRequest) -> PaginationResponse<Artist>
 }
 
+interface LocalSongRepository <<trait>> {
+    + save(listenerId: ListenerId, song: Song)
+    + get(listenerId: listenerId, songId: Uuid) -> Option<Song>
+}
+
+interface LocalPlaylistRepository <<trait>> {
+    + save(listenerId: ListenerId, playlist: Playlist)
+    + get(listenerId: listenerId, playlistId: Uuid) -> Option<Playlist>
+}
+
 interface AuthTokenRepository <<trait>> {
     + save(authToken: String)
-    + get() -> String
+    + get() -> Option<String>
 }
 
 interface AuthTokenGenerator <<trait>> {
     + generate(listenerId: Uuid) -> String
 
     + verify(authToken: String) -> bool
+    + invalidate(authToken: String)
     + getListenerId(authToken: String) -> Uuid
 }
 
@@ -79,7 +90,7 @@ interface ResetAccountEmailSender <<trait>> {
 }
 
 interface UserCredentialsVerifier <<trait>> {
-    + verify(credentials: UserCredentials)
+    + verify(credentials: UserCredentials) -> bool
 }
 
 class PaginationRequest <<struct>> {
