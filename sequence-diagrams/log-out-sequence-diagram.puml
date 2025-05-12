@@ -3,5 +3,51 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary ListenerHomeView
+boundary GuestHomeView
+participant LogoutController
+control LogoutInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant LogoutPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> ListenerHomeView: click on logout button
+activate "Guest/Listener"
+activate ListenerHomeView
+
+ListenerHomeView -> GuestHomeView: redirect
+activate GuestHomeView
+deactivate "Guest/Listener"
+deactivate GuestHomeView
+
+ListenerHomeView -> LogoutController: pass RequestObject
+deactivate ListenerHomeView
+activate LogoutController
+
+alt OK
+    LogoutController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    LogoutController -> LogoutInteractor: repackage & pass RequestModel\n(authToken)
+    deactivate LogoutController
+    activate LogoutInteractor
+
+    LogoutInteractor ->> AuthTokenGenerator: invalidate authentication token\n(authToken)
+
+    LogoutInteractor ->> LogoutPresenter: pass ResponseModel\n(Ok())
+    deactivate LogoutInteractor
+
+else Error: Authentication token not found
+    LogoutController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    activate LogoutController
+    return None
+    deactivate AuthTokenRepository
+    deactivate LogoutController
+
+end
 
 @enduml
