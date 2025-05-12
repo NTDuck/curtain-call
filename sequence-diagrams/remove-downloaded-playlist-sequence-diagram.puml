@@ -3,5 +3,105 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary OfflinePlaylistsView
+boundary LoginView
+participant RemoveDownloadedPlaylistController
+control RemoveDownloadedPlaylistInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant LocalPlaylistRepository <<Gateway>>
+participant RemoveDownloadedPlaylistPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> OfflinePlaylistsView: click on remove button for a playlist element
+activate "Guest/Listener"
+activate OfflinePlaylistsView
+
+OfflinePlaylistsView -> RemoveDownloadedPlaylistController: pass RequestObject\n(playlistId)
+activate RemoveDownloadedPlaylistController
+
+alt OK
+    RemoveDownloadedPlaylistController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    RemoveDownloadedPlaylistController -> RemoveDownloadedPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate RemoveDownloadedPlaylistController
+    activate RemoveDownloadedPlaylistInteractor
+
+    RemoveDownloadedPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    RemoveDownloadedPlaylistInteractor <- AuthTokenGenerator: true
+    RemoveDownloadedPlaylistInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    RemoveDownloadedPlaylistInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    RemoveDownloadedPlaylistInteractor ->> LocalPlaylistRepository: remove Playlist\n(listenerId, playlistId)
+
+    RemoveDownloadedPlaylistInteractor ->> RemoveDownloadedPlaylistPresenter: pass ResponseModel\n(Ok())
+    deactivate RemoveDownloadedPlaylistInteractor
+    activate RemoveDownloadedPlaylistPresenter
+
+    RemoveDownloadedPlaylistPresenter ->> OfflinePlaylistsView: repackage & update ViewModel\n(Ok())
+    deactivate RemoveDownloadedPlaylistPresenter
+    
+    OfflinePlaylistsView -> "Guest/Listener": see the result of the interaction
+    deactivate OfflinePlaylistsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    RemoveDownloadedPlaylistController -> AuthTokenRepository: get authentication token
+    activate RemoveDownloadedPlaylistController
+    activate "Guest/Listener"
+    activate OfflinePlaylistsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    RemoveDownloadedPlaylistController -> LoginView: redirect
+    deactivate OfflinePlaylistsView
+    deactivate RemoveDownloadedPlaylistController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    RemoveDownloadedPlaylistController -> AuthTokenRepository: get authentication token
+    activate RemoveDownloadedPlaylistController
+    activate "Guest/Listener"
+    activate OfflinePlaylistsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    RemoveDownloadedPlaylistController -> RemoveDownloadedPlaylistInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate RemoveDownloadedPlaylistController
+    activate RemoveDownloadedPlaylistInteractor
+
+    RemoveDownloadedPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    RemoveDownloadedPlaylistInteractor ->> RemoveDownloadedPlaylistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate RemoveDownloadedPlaylistInteractor
+    activate RemoveDownloadedPlaylistPresenter
+
+    RemoveDownloadedPlaylistPresenter ->> OfflinePlaylistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate RemoveDownloadedPlaylistPresenter
+
+    OfflinePlaylistsView -> LoginView: redirect
+    deactivate OfflinePlaylistsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
 
 @enduml

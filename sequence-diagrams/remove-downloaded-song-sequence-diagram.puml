@@ -3,5 +3,105 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary OfflineSongsView
+boundary LoginView
+participant RemoveDownloadedSongController
+control RemoveDownloadedSongInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant LocalSongRepository <<Gateway>>
+participant RemoveDownloadedSongPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> OfflineSongsView: click on remove button for a song element
+activate "Guest/Listener"
+activate OfflineSongsView
+
+OfflineSongsView -> RemoveDownloadedSongController: pass RequestObject\n(songId)
+activate RemoveDownloadedSongController
+
+alt OK
+    RemoveDownloadedSongController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    RemoveDownloadedSongController -> RemoveDownloadedSongInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate RemoveDownloadedSongController
+    activate RemoveDownloadedSongInteractor
+
+    RemoveDownloadedSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    RemoveDownloadedSongInteractor <- AuthTokenGenerator: true
+    RemoveDownloadedSongInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    RemoveDownloadedSongInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    RemoveDownloadedSongInteractor ->> LocalSongRepository: remove Song\n(listenerId, songId)
+
+    RemoveDownloadedSongInteractor ->> RemoveDownloadedSongPresenter: pass ResponseModel\n(Ok())
+    deactivate RemoveDownloadedSongInteractor
+    activate RemoveDownloadedSongPresenter
+
+    RemoveDownloadedSongPresenter ->> OfflineSongsView: repackage & update ViewModel\n(Ok())
+    deactivate RemoveDownloadedSongPresenter
+    
+    OfflineSongsView -> "Guest/Listener": see the result of the interaction
+    deactivate OfflineSongsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    RemoveDownloadedSongController -> AuthTokenRepository: get authentication token
+    activate RemoveDownloadedSongController
+    activate "Guest/Listener"
+    activate OfflineSongsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    RemoveDownloadedSongController -> LoginView: redirect
+    deactivate OfflineSongsView
+    deactivate RemoveDownloadedSongController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    RemoveDownloadedSongController -> AuthTokenRepository: get authentication token
+    activate RemoveDownloadedSongController
+    activate "Guest/Listener"
+    activate OfflineSongsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    RemoveDownloadedSongController -> RemoveDownloadedSongInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate RemoveDownloadedSongController
+    activate RemoveDownloadedSongInteractor
+
+    RemoveDownloadedSongInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    RemoveDownloadedSongInteractor ->> RemoveDownloadedSongPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate RemoveDownloadedSongInteractor
+    activate RemoveDownloadedSongPresenter
+
+    RemoveDownloadedSongPresenter ->> OfflineSongsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate RemoveDownloadedSongPresenter
+
+    OfflineSongsView -> LoginView: redirect
+    deactivate OfflineSongsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
 
 @enduml

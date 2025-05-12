@@ -51,11 +51,13 @@ interface FavouritesRepository <<trait>> {
 
 interface LocalSongRepository <<trait>> {
     + save(listenerId: ListenerId, song: Song)
+    + remove(listenerId: ListenerId, songId: Uuid)
     + get(listenerId: listenerId, songId: Uuid) -> Option<Song>
 }
 
 interface LocalPlaylistRepository <<trait>> {
     + save(listenerId: ListenerId, playlist: Playlist)
+    + remove(listenerId: ListenerId, songId: Uuid)
     + get(listenerId: listenerId, playlistId: Uuid) -> Option<Playlist>
 }
 
