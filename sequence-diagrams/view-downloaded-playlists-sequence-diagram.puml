@@ -3,5 +3,113 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary OfflinePlaylsitsLinkView
+boundary OfflinePlaylistsView
+boundary LoginView
+participant ViewDownloadedPlaylistsController
+control ViewDownloadedPlaylistsInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant LocalPlaylistRepository <<Gateway>>
+participant ViewDownloadedPlaylistsPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> OfflinePlaylistsLinkView: click on navigatable element
+activate "Guest/Listener"
+activate OfflinePlaylistsLinkView
+
+OfflinePlaylistsLinkView -> OfflinePlaylistsView: redirect
+deactivate OfflinePlaylistsLinkView
+activate OfflinePlaylistsView
+
+OfflinePlaylistsView -> ViewDownloadedPlaylistsController: pass RequestObject
+activate ViewDownloadedPlaylistsController
+
+alt OK
+    ViewDownloadedPlaylistsController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewDownloadedPlaylistsController -> ViewDownloadedPlaylistsInteractor: repackage & pass RequestModel\n(authToken)
+    deactivate ViewDownloadedPlaylistsController
+    activate ViewDownloadedPlaylistsInteractor
+
+    ViewDownloadedPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewDownloadedPlaylistsInteractor <- AuthTokenGenerator: true
+    ViewDownloadedPlaylistsInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    ViewDownloadedPlaylistsInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    ViewDownloadedPlaylistsInteractor -> LocalPlaylistRepository: show downloaded Playlists of Listener\n(listenerId)
+    activate LocalPlaylistRepository
+    return playlists
+    deactivate LocalPlaylistRepository
+
+    ViewDownloadedPlaylistsInteractor ->> ViewDownloadedPlaylistsPresenter: pass ResponseModel\n(Ok(playlists))
+    deactivate ViewDownloadedPlaylistsInteractor
+    activate ViewDownloadedPlaylistsPresenter
+
+    ViewDownloadedPlaylistsPresenter ->> OfflinePlaylistsView: repackage & update ViewModel\n(Ok(playlists))
+    deactivate ViewDownloadedPlaylistsPresenter
+    
+    OfflinePlaylistsView -> "Guest/Listener": see the result of the interaction
+    deactivate OfflinePlaylistsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    ViewDownloadedPlaylistsController -> AuthTokenRepository: get authentication token
+    activate ViewDownloadedPlaylistsController
+    activate "Guest/Listener"
+    activate OfflinePlaylistsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ViewDownloadedPlaylistsController -> LoginView: redirect
+    deactivate OfflinePlaylistsView
+    deactivate ViewDownloadedPlaylistsController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    ViewDownloadedPlaylistsController -> AuthTokenRepository: get authentication token
+    activate ViewDownloadedPlaylistsController
+    activate "Guest/Listener"
+    activate OfflinePlaylistsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewDownloadedPlaylistsController -> ViewDownloadedPlaylistsInteractor: repackage & pass RequestModel\n(authToken, playlistId)
+    deactivate ViewDownloadedPlaylistsController
+    activate ViewDownloadedPlaylistsInteractor
+
+    ViewDownloadedPlaylistsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ViewDownloadedPlaylistsInteractor ->> ViewDownloadedPlaylistsPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewDownloadedPlaylistsInteractor
+    activate ViewDownloadedPlaylistsPresenter
+
+    ViewDownloadedPlaylistsPresenter ->> OfflinePlaylistsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewDownloadedPlaylistsPresenter
+
+    OfflinePlaylistsView -> LoginView: redirect
+    deactivate OfflinePlaylistsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
 
 @enduml

@@ -3,5 +3,113 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary OfflinePlaylsitsLinkView
+boundary OfflineSongsView
+boundary LoginView
+participant ViewDownloadedSongsController
+control ViewDownloadedSongsInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant LocalSongRepository <<Gateway>>
+participant ViewDownloadedSongsPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> OfflineSongsLinkView: click on navigatable element
+activate "Guest/Listener"
+activate OfflineSongsLinkView
+
+OfflineSongsLinkView -> OfflineSongsView: redirect
+deactivate OfflineSongsLinkView
+activate OfflineSongsView
+
+OfflineSongsView -> ViewDownloadedSongsController: pass RequestObject
+activate ViewDownloadedSongsController
+
+alt OK
+    ViewDownloadedSongsController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewDownloadedSongsController -> ViewDownloadedSongsInteractor: repackage & pass RequestModel\n(authToken)
+    deactivate ViewDownloadedSongsController
+    activate ViewDownloadedSongsInteractor
+
+    ViewDownloadedSongsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewDownloadedSongsInteractor <- AuthTokenGenerator: true
+    ViewDownloadedSongsInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    ViewDownloadedSongsInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    ViewDownloadedSongsInteractor -> LocalSongRepository: show downloaded Songs of Listener\n(listenerId)
+    activate LocalSongRepository
+    return songs
+    deactivate LocalSongRepository
+
+    ViewDownloadedSongsInteractor ->> ViewDownloadedSongsPresenter: pass ResponseModel\n(Ok(songs))
+    deactivate ViewDownloadedSongsInteractor
+    activate ViewDownloadedSongsPresenter
+
+    ViewDownloadedSongsPresenter ->> OfflineSongsView: repackage & update ViewModel\n(Ok(songs))
+    deactivate ViewDownloadedSongsPresenter
+    
+    OfflineSongsView -> "Guest/Listener": see the result of the interaction
+    deactivate OfflineSongsView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    ViewDownloadedSongsController -> AuthTokenRepository: get authentication token
+    activate ViewDownloadedSongsController
+    activate "Guest/Listener"
+    activate OfflineSongsView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ViewDownloadedSongsController -> LoginView: redirect
+    deactivate OfflineSongsView
+    deactivate ViewDownloadedSongsController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    ViewDownloadedSongsController -> AuthTokenRepository: get authentication token
+    activate ViewDownloadedSongsController
+    activate "Guest/Listener"
+    activate OfflineSongsView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewDownloadedSongsController -> ViewDownloadedSongsInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate ViewDownloadedSongsController
+    activate ViewDownloadedSongsInteractor
+
+    ViewDownloadedSongsInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ViewDownloadedSongsInteractor ->> ViewDownloadedSongsPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewDownloadedSongsInteractor
+    activate ViewDownloadedSongsPresenter
+
+    ViewDownloadedSongsPresenter ->> OfflineSongsView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewDownloadedSongsPresenter
+
+    OfflineSongsView -> LoginView: redirect
+    deactivate OfflineSongsView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
 
 @enduml
