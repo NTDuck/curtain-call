@@ -49,7 +49,7 @@ alt OK
 
     ShareSongInteractor ->> ShareSongPresenter: pass ResponseModel\n(Ok(songUri))
     deactivate ShareSongInteractor
-    activate ShareSongInteractor
+    activate ShareSongPresenter
 
     ShareSongPresenter ->> SongView: repackage & update ViewModel\n(Ok(songUri))
     deactivate ShareSongPresenter

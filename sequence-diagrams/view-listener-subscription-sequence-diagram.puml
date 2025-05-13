@@ -3,5 +3,149 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary ListenerLinkView
+boundary ListenerView
+boundary LoginView
+participant ViewListenerSubscriptionController
+control ViewListenerSubscriptionInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant ViewListenerSubscriptionPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> ListenerLinkView: click on navigatable element
+activate "Guest/Listener"
+activate ListenerLinkView
+
+ListenerLinkView -> ListenerView: redirect
+deactivate ListenerLinkView
+activate ListenerView
+
+ListenerView -> ViewListenerSubscriptionController: pass RequestObject
+activate ViewListenerSubscriptionController
+    
+alt OK
+    ViewListenerSubscriptionController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewListenerSubscriptionController -> ViewListenerSubscriptionInteractor: repackage & pass RequestModel\n(authToken)
+    deactivate ViewListenerSubscriptionController
+    activate ViewListenerSubscriptionInteractor
+
+    ViewListenerSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewListenerSubscriptionInteractor <- AuthTokenGenerator: true
+    ViewListenerSubscriptionInteractor -> AuthTokenGenerator: get Listener ID from authentication token
+    ViewListenerSubscriptionInteractor -> AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    ViewListenerSubscriptionInteractor -> ListenerRepository: get Listener subscription by ID\n(listenerId)
+    activate ListenerRepository
+    return Some(listenerSubscription)
+    deactivate ListenerRepository
+
+    ViewListenerSubscriptionInteractor ->> ViewListenerSubscriptionPresenter: pass ResponseModel\n(Ok(listenerSubscription))
+    deactivate ViewListenerSubscriptionInteractor
+    activate ViewListenerSubscriptionPresenter
+
+    ViewListenerSubscriptionPresenter ->> ListenerView: repackage & update ViewModel\n(Ok(listenerSubscription))
+    deactivate ViewListenerSubscriptionPresenter
+
+    ListenerView -> "Guest/Listener": see the result of the interaction
+    deactivate ListenerView
+    deactivate "Guest/Listener"
+    
+    newpage
+
+else Error: Authentication token not found
+    ViewListenerSubscriptionController -> AuthTokenRepository: get authentication token
+    activate ViewListenerSubscriptionController
+    activate "Guest/Listener"
+    activate ListenerView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ViewListenerSubscriptionController -> LoginView: redirect
+    deactivate ListenerView
+    deactivate ViewListenerSubscriptionController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    ViewListenerSubscriptionController -> AuthTokenRepository: get authentication token
+    activate ViewListenerSubscriptionController
+    activate "Guest/Listener"
+    activate ListenerView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewListenerSubscriptionController -> ViewListenerSubscriptionInteractor: repackage & pass RequestModel\n(authToken, listenerId)
+    deactivate ViewListenerSubscriptionController
+    activate ViewListenerSubscriptionInteractor
+
+    ViewListenerSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ViewListenerSubscriptionInteractor ->> ViewListenerSubscriptionPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewListenerSubscriptionInteractor
+    activate ViewListenerSubscriptionPresenter
+
+    ViewListenerSubscriptionPresenter ->> ListenerView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewListenerSubscriptionPresenter
+
+    ListenerView -> LoginView: redirect
+    deactivate ListenerView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Listener not found
+    ViewListenerSubscriptionController -> AuthTokenRepository: get authentication token
+    activate ViewListenerSubscriptionController
+    activate "Guest/Listener"
+    activate ListenerView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewListenerSubscriptionController -> ViewListenerSubscriptionInteractor: repackage & pass RequestModel\n(authToken, listenerId)
+    deactivate ViewListenerSubscriptionController
+    activate ViewListenerSubscriptionInteractor
+
+    ViewListenerSubscriptionInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    ViewListenerSubscriptionInteractor -> ListenerRepository: get Listener subscription by ID\n(listenerId)
+    activate ListenerRepository
+    return None
+    deactivate ListenerRepository
+
+    ViewListenerSubscriptionInteractor ->> ViewListenerSubscriptionPresenter: pass ResponseModel\n(Err(ListenerNotFound))
+    deactivate ViewListenerSubscriptionInteractor
+    activate ViewListenerSubscriptionPresenter
+
+    ViewListenerSubscriptionPresenter ->> ListenerView: repackage & update ViewModel\n(Err(ListenerNotFound))
+    deactivate ViewListenerSubscriptionPresenter
+
+    ListenerView -> "Guest/Listener": see the result of the interaction
+    deactivate ListenerView
+    deactivate "Guest/Listener"
+    
+end
 
 @enduml

@@ -3,5 +3,146 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary PlaylistView
+boundary LoginView
+participant RemoveSongFromPlaylistController
+control RemoveSongFromPlaylistInteractor <<InputBoundary>>
+participant AuthTokenRepostiory <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant PlaylistRepository <<Gateway>>
+participant RemoveSongFromPlaylistPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> PlaylistView: click on "remove from playlist" button of a song element
+activate "Guest/Listener"
+activate PlaylistView
+
+PlaylistView -> RemoveSongFromPlaylistController: pass RequestObject\n(songId, playlistId)
+activate RemoveSongFromPlaylistController
+
+alt OK
+    RemoveSongFromPlaylistController -> AuthTokenRepostiory: get authentication token
+    activate AuthTokenRepostiory
+    return Some(authToken)
+    deactivate AuthTokenRepostiory
+
+    RemoveSongFromPlaylistController -> RemoveSongFromPlaylistInteractor: repackage & pas RequestModel\n(authToken, songId, playlistId)
+    deactivate RemoveSongFromPlaylistController
+    activate RemoveSongFromPlaylistInteractor
+
+    RemoveSongFromPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    RemoveSongFromPlaylistInteractor <- AuthTokenGenerator: true
+    RemoveSongFromPlaylistInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    RemoveSongFromPlaylistInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    RemoveSongFromPlaylistInteractor -> PlaylistRepository: check if Listener is owner of Playlist\n(playlistId, listenerId)
+    activate PlaylistRepository
+    RemoveSongFromPlaylistInteractor <- PlaylistRepository: true
+    RemoveSongFromPlaylistInteractor ->> PlaylistRepository: remove Song from Playlist\n(songId, playlistId)
+    deactivate PlaylistRepository
+
+    RemoveSongFromPlaylistInteractor ->> RemoveSongFromPlaylistPresenter: pass ResponseModel\n(Ok())
+    deactivate RemoveSongFromPlaylistInteractor
+    activate RemoveSongFromPlaylistPresenter
+
+    RemoveSongFromPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Ok())
+    deactivate RemoveSongFromPlaylistPresenter
+
+    PlaylistView -> "Guest/Listener": see the result of the interaction
+    deactivate PlaylistView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    RemoveSongFromPlaylistController -> AuthTokenRepository: get authentication token
+    activate RemoveSongFromPlaylistController
+    activate "Guest/Listener"
+    activate PlaylistView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    RemoveSongFromPlaylistController -> LoginView: redirect
+    deactivate PlaylistView
+    deactivate RemoveSongFromPlaylistController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    RemoveSongFromPlaylistController -> AuthTokenRepository: get authentication token
+    activate RemoveSongFromPlaylistController
+    activate "Guest/Listener"
+    activate PlaylistView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    RemoveSongFromPlaylistController -> RemoveSongFromPlaylistInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate RemoveSongFromPlaylistController
+    activate RemoveSongFromPlaylistInteractor
+
+    RemoveSongFromPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    RemoveSongFromPlaylistInteractor ->> RemoveSongFromPlaylistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate RemoveSongFromPlaylistInteractor
+    activate RemoveSongFromPlaylistPresenter
+
+    RemoveSongFromPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate RemoveSongFromPlaylistPresenter
+
+    PlaylistView -> LoginView: redirect
+    deactivate PlaylistView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Playlist not found, or Listener is not the owner of Playlist
+    RemoveSongFromPlaylistController -> AuthTokenRepository: get authentication token
+    activate RemoveSongFromPlaylistController
+    activate "Guest/Listener"
+    activate PlaylistView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    RemoveSongFromPlaylistController -> RemoveSongFromPlaylistInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate RemoveSongFromPlaylistController
+    activate RemoveSongFromPlaylistInteractor
+
+    RemoveSongFromPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    RemoveSongFromPlaylistInteractor -> PlaylistRepository: check if Playlist is visible to Listener\n(playlistId, listenerId)
+    activate PlaylistRepository
+    return false
+    deactivate PlaylistRepository
+
+    RemoveSongFromPlaylistInteractor ->> RemoveSongFromPlaylistPresenter: pass ResponseModel\n(Err(PlaylistNotFound))
+    deactivate RemoveSongFromPlaylistInteractor
+    activate RemoveSongFromPlaylistPresenter
+
+    RemoveSongFromPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Err(PlaylistNotFound))
+    deactivate RemoveSongFromPlaylistPresenter
+
+    PlaylistView -> "Guest/Listener": see the result of the interaction
+    deactivate PlaylistView
+    deactivate "Guest/Listener"
+    
+end
+
 
 @enduml

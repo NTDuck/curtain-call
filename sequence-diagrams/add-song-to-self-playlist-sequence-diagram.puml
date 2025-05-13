@@ -4,6 +4,145 @@ hide footbox
 skinparam BackgroundColor transparent
 
 actor "Guest/Listener"
-boundary 
+boundary PlaylistView
+boundary LoginView
+participant AddSongToPlaylistController
+control AddSongToPlaylistInteractor <<InputBoundary>>
+participant AuthTokenRepostiory <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant PlaylistRepository <<Gateway>>
+participant AddSongToPlaylistPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> PlaylistView: click on "add to playlist" button of a song element
+activate "Guest/Listener"
+activate PlaylistView
+
+PlaylistView -> AddSongToPlaylistController: pass RequestObject\n(songId, playlistId)
+activate AddSongToPlaylistController
+
+alt OK
+    AddSongToPlaylistController -> AuthTokenRepostiory: get authentication token
+    activate AuthTokenRepostiory
+    return Some(authToken)
+    deactivate AuthTokenRepostiory
+
+    AddSongToPlaylistController -> AddSongToPlaylistInteractor: repackage & pas RequestModel\n(authToken, songId, playlistId)
+    deactivate AddSongToPlaylistController
+    activate AddSongToPlaylistInteractor
+
+    AddSongToPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    AddSongToPlaylistInteractor <- AuthTokenGenerator: true
+    AddSongToPlaylistInteractor -> AuthTokenGenerator: get Listener ID\n(authToken)
+    AddSongToPlaylistInteractor <- AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    AddSongToPlaylistInteractor -> PlaylistRepository: check if Listener is owner of Playlist\n(playlistId, listenerId)
+    activate PlaylistRepository
+    AddSongToPlaylistInteractor <- PlaylistRepository: true
+    AddSongToPlaylistInteractor ->> PlaylistRepository: add Song to Playlist\n(songId, playlistId)
+    deactivate PlaylistRepository
+
+    AddSongToPlaylistInteractor ->> AddSongToPlaylistPresenter: pass ResponseModel\n(Ok())
+    deactivate AddSongToPlaylistInteractor
+    activate AddSongToPlaylistPresenter
+
+    AddSongToPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Ok())
+    deactivate AddSongToPlaylistPresenter
+
+    PlaylistView -> "Guest/Listener": see the result of the interaction
+    deactivate PlaylistView
+    deactivate "Guest/Listener"
+
+    newpage
+
+else Error: Authentication token not found
+    AddSongToPlaylistController -> AuthTokenRepository: get authentication token
+    activate AddSongToPlaylistController
+    activate "Guest/Listener"
+    activate PlaylistView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    AddSongToPlaylistController -> LoginView: redirect
+    deactivate PlaylistView
+    deactivate AddSongToPlaylistController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    AddSongToPlaylistController -> AuthTokenRepository: get authentication token
+    activate AddSongToPlaylistController
+    activate "Guest/Listener"
+    activate PlaylistView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    AddSongToPlaylistController -> AddSongToPlaylistInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate AddSongToPlaylistController
+    activate AddSongToPlaylistInteractor
+
+    AddSongToPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    AddSongToPlaylistInteractor ->> AddSongToPlaylistPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate AddSongToPlaylistInteractor
+    activate AddSongToPlaylistPresenter
+
+    AddSongToPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate AddSongToPlaylistPresenter
+
+    PlaylistView -> LoginView: redirect
+    deactivate PlaylistView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Playlist not found, or Listener is not the owner of Playlist
+    AddSongToPlaylistController -> AuthTokenRepository: get authentication token
+    activate AddSongToPlaylistController
+    activate "Guest/Listener"
+    activate PlaylistView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    AddSongToPlaylistController -> AddSongToPlaylistInteractor: repackage & pass RequestModel\n(authToken, songId)
+    deactivate AddSongToPlaylistController
+    activate AddSongToPlaylistInteractor
+
+    AddSongToPlaylistInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    AddSongToPlaylistInteractor -> PlaylistRepository: check if Playlist is visible to Listener\n(playlistId, listenerId)
+    activate PlaylistRepository
+    return false
+    deactivate PlaylistRepository
+
+    AddSongToPlaylistInteractor ->> AddSongToPlaylistPresenter: pass ResponseModel\n(Err(PlaylistNotFound))
+    deactivate AddSongToPlaylistInteractor
+    activate AddSongToPlaylistPresenter
+
+    AddSongToPlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Err(PlaylistNotFound))
+    deactivate AddSongToPlaylistPresenter
+
+    PlaylistView -> "Guest/Listener": see the result of the interaction
+    deactivate PlaylistView
+    deactivate "Guest/Listener"
+    
+end
+
 
 @enduml

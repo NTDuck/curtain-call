@@ -49,7 +49,7 @@ alt OK
 
     ShareArtistInteractor ->> ShareArtistPresenter: pass ResponseModel\n(Ok(artistUri))
     deactivate ShareArtistInteractor
-    activate ShareArtistInteractor
+    activate ShareArtistPresenter
 
     ShareArtistPresenter ->> ArtistView: repackage & update ViewModel\n(Ok(artistUri))
     deactivate ShareArtistPresenter

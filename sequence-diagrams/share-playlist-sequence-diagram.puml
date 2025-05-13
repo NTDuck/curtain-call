@@ -49,7 +49,7 @@ alt OK
 
     SharePlaylistInteractor ->> SharePlaylistPresenter: pass ResponseModel\n(Ok(playlistUri))
     deactivate SharePlaylistInteractor
-    activate SharePlaylistInteractor
+    activate SharePlaylistPresenter
 
     SharePlaylistPresenter ->> PlaylistView: repackage & update ViewModel\n(Ok(playlistUri))
     deactivate SharePlaylistPresenter

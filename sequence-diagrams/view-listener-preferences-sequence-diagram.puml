@@ -3,5 +3,149 @@
 hide footbox
 skinparam BackgroundColor transparent
 
+actor "Guest/Listener"
+boundary ListenerLinkView
+boundary ListenerView
+boundary LoginView
+participant ViewListenerPreferencesController
+control ViewListenerPreferencesInteractor <<InputBoundary>>
+participant AuthTokenRepository <<Gateway>>
+participant AuthTokenGenerator <<Gateway>>
+participant ListenerRepository <<Gateway>>
+participant ViewListenerPreferencesPresenter <<OutputBoundary>>
+
+"Guest/Listener" -> ListenerLinkView: click on navigatable element
+activate "Guest/Listener"
+activate ListenerLinkView
+
+ListenerLinkView -> ListenerView: redirect
+deactivate ListenerLinkView
+activate ListenerView
+
+ListenerView -> ViewListenerPreferencesController: pass RequestObject
+activate ViewListenerPreferencesController
+    
+alt OK
+    ViewListenerPreferencesController -> AuthTokenRepository: get authentication token
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewListenerPreferencesController -> ViewListenerPreferencesInteractor: repackage & pass RequestModel\n(authToken)
+    deactivate ViewListenerPreferencesController
+    activate ViewListenerPreferencesInteractor
+
+    ViewListenerPreferencesInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    ViewListenerPreferencesInteractor <- AuthTokenGenerator: true
+    ViewListenerPreferencesInteractor -> AuthTokenGenerator: get Listener ID from authentication token
+    ViewListenerPreferencesInteractor -> AuthTokenGenerator: listenerId
+    deactivate AuthTokenGenerator
+
+    ViewListenerPreferencesInteractor -> ListenerRepository: get Listener preferences by ID\n(listenerId)
+    activate ListenerRepository
+    return Some(listenerPreferences)
+    deactivate ListenerRepository
+
+    ViewListenerPreferencesInteractor ->> ViewListenerPreferencesPresenter: pass ResponseModel\n(Ok(listenerPreferences))
+    deactivate ViewListenerPreferencesInteractor
+    activate ViewListenerPreferencesPresenter
+
+    ViewListenerPreferencesPresenter ->> ListenerView: repackage & update ViewModel\n(Ok(listenerPreferences))
+    deactivate ViewListenerPreferencesPresenter
+
+    ListenerView -> "Guest/Listener": see the result of the interaction
+    deactivate ListenerView
+    deactivate "Guest/Listener"
+    
+    newpage
+
+else Error: Authentication token not found
+    ViewListenerPreferencesController -> AuthTokenRepository: get authentication token
+    activate ViewListenerPreferencesController
+    activate "Guest/Listener"
+    activate ListenerView
+    activate AuthTokenRepository
+    return None
+    deactivate AuthTokenRepository
+
+    ViewListenerPreferencesController -> LoginView: redirect
+    deactivate ListenerView
+    deactivate ViewListenerPreferencesController
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    
+else Error: Authentication token invalid
+    ViewListenerPreferencesController -> AuthTokenRepository: get authentication token
+    activate ViewListenerPreferencesController
+    activate "Guest/Listener"
+    activate ListenerView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewListenerPreferencesController -> ViewListenerPreferencesInteractor: repackage & pass RequestModel\n(authToken, listenerId)
+    deactivate ViewListenerPreferencesController
+    activate ViewListenerPreferencesInteractor
+
+    ViewListenerPreferencesInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return false
+    deactivate AuthTokenGenerator
+
+    ViewListenerPreferencesInteractor ->> ViewListenerPreferencesPresenter: pass ResponseModel\n(Err(AuthTokenInvalid))
+    deactivate ViewListenerPreferencesInteractor
+    activate ViewListenerPreferencesPresenter
+
+    ViewListenerPreferencesPresenter ->> ListenerView: repackage & update ViewModel\n(Err(AuthTokenInvalid))
+    deactivate ViewListenerPreferencesPresenter
+
+    ListenerView -> LoginView: redirect
+    deactivate ListenerView
+    activate LoginView
+
+    LoginView -> "Guest/Listener": see the result of the interaction
+    deactivate LoginView
+    deactivate "Guest/Listener"
+    newpage
+
+else Error: Listener not found
+    ViewListenerPreferencesController -> AuthTokenRepository: get authentication token
+    activate ViewListenerPreferencesController
+    activate "Guest/Listener"
+    activate ListenerView
+    activate AuthTokenRepository
+    return Some(authToken)
+    deactivate AuthTokenRepository
+
+    ViewListenerPreferencesController -> ViewListenerPreferencesInteractor: repackage & pass RequestModel\n(authToken, listenerId)
+    deactivate ViewListenerPreferencesController
+    activate ViewListenerPreferencesInteractor
+
+    ViewListenerPreferencesInteractor -> AuthTokenGenerator: verify authentication token
+    activate AuthTokenGenerator
+    return true
+    deactivate AuthTokenGenerator
+
+    ViewListenerPreferencesInteractor -> ListenerRepository: get Listener preferences by ID\n(listenerId)
+    activate ListenerRepository
+    return None
+    deactivate ListenerRepository
+
+    ViewListenerPreferencesInteractor ->> ViewListenerPreferencesPresenter: pass ResponseModel\n(Err(ListenerNotFound))
+    deactivate ViewListenerPreferencesInteractor
+    activate ViewListenerPreferencesPresenter
+
+    ViewListenerPreferencesPresenter ->> ListenerView: repackage & update ViewModel\n(Err(ListenerNotFound))
+    deactivate ViewListenerPreferencesPresenter
+
+    ListenerView -> "Guest/Listener": see the result of the interaction
+    deactivate ListenerView
+    deactivate "Guest/Listener"
+    
+end
 
 @enduml
